@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include <bit>
 #include <concepts>
+#include <cstdint>
 
 namespace interpreter
 {
@@ -51,42 +52,125 @@ namespace interpreter
 		eval_union eval;
 	};
 
+	union state_val
+	{
+		state state;
+		val16 value;
+	};
+
+	enum class type : uint8_t
+	{
+		v0,
+		v1
+	};
+
 	union val8
 	{
 		int8_t si;
 		uint8_t ui;
 	};
 
+	template <std::endian endianness>
+	struct val16half;
+
+	template <>
+	struct val16half<std::endian::big>
+	{
+		val8 hi;
+		val8 lo;
+	};
+
+	template <>
+	struct val16half<std::endian::little>
+	{
+		val8 lo;
+		val8 hi;
+	};
+
 	union val16
 	{
+		static constexpr uint64_t v8_count = 2ui64;
+
 		int16_t si;
 		uint16_t ui;
 
-		val8 v8[2ui64];
+		val8 v8[v8_count];
+
+		val16half<std::endian::native> half;
+	};
+
+	template <std::endian endianness>
+	struct val32half;
+
+	template <>
+	struct val32half<std::endian::big>
+	{
+		val16 hi;
+		val16 lo;
+	};
+
+	template <>
+	struct val32half<std::endian::little>
+	{
+		val16 lo;
+		val16 hi;
 	};
 
 	union val32
 	{
+		static constexpr uint64_t v8_count = 4ui64;
+		static constexpr uint64_t v16_count = 2ui64;
+
 		float f;
 
 		int32_t si;
 		uint32_t ui;
 
-		val8 v8[4ui64];
-		val16 v16[2ui64];
+		val8 v8[v8_count];
+		val16 v16[v16_count];
+
+		val32half<std::endian::native> half;
+	};
+
+	template <std::endian endianness>
+	struct val64half;
+
+	template <>
+	struct val64half<std::endian::big>
+	{
+		val32 hi;
+		val32 lo;
+	};
+
+	template <>
+	struct val64half<std::endian::little>
+	{
+		val32 lo;
+		val32 hi;
 	};
 
 	union val64
 	{
+		static constexpr uint64_t v8_count = 8ui64;
+		static constexpr uint64_t v16_count = 4ui64;
+		static constexpr uint64_t v32_count = 2ui64;
+
 		double f;
 
 		int64_t si;
 		uint64_t ui;
 
-		val8 v8[8ui64];
-		val16 v16[4ui64];
-		val32 v32[2ui64];
+		val8 v8[v8_count];
+		val16 v16[v16_count];
+		val32 v32[v32_count];
+
+		val64half<std::endian::native> half;
 	};
+
+	template <typename T>
+	concept FLOAT
+		= std::same_as<T, double>
+		|| std::same_as<T, float>;
 
 	template <typename T>
 	concept SINT

@@ -407,11 +407,16 @@
   <ItemGroup>
     <ClCompile Include="api.cpp" />
     <ClCompile Include="compiler.cpp" />
+    <ClCompile Include="dispatcher.cpp" />
     <ClCompile Include="interpreter.cpp" />
+    <ClCompile Include="stack.cpp" />
+    <ClCompile Include="stack_be.cpp" />
+    <ClCompile Include="stack_le.cpp" />
     <ClCompile Include="veil.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="compiler.hpp" />
+    <ClInclude Include="dispatcher.hpp" />
     <ClInclude Include="interpreter.hpp" />
     <ClInclude Include="interpreter_type.hpp" />
     <ClInclude Include="op.hpp" />
