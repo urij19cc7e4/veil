@@ -14,22 +14,22 @@ namespace interpreter
 		inline void __push_ptr(const uint8_t* value);
 		inline uint8_t* __pop_ptr();
 
-		template <VALUE T>
+		template <VALUE V>
 		inline uint8_t* __get_vptr(ptrdiff_t offset)
 		{
 			if (offset >= (ptrdiff_t)0)
 			{
 				uint8_t* vptr = _ftop + (ptrdiff_t)offset + (ptrdiff_t)(sizeof(uint64_t) * 2ui64);
 
-				if (vptr + (ptrdiff_t)sizeof(T) > *((uint8_t**)_ftop))
+				if (vptr + (ptrdiff_t)sizeof(V) > *((uint8_t**)_ftop))
 					throw std::runtime_error(_err_msg_frame_unf);
 				else
 					return vptr;
 			}
 			else
 			{
-				// uint8_t* vptr = _ftop - (ptrdiff_t)(-((int64_t)offset + 1i64)) - (ptrdiff_t)sizeof(T);
-				uint8_t* vptr = _ftop - (ptrdiff_t)(~((uint64_t)(int64_t)offset)) - (ptrdiff_t)sizeof(T);
+				// uint8_t* vptr = _ftop - (ptrdiff_t)(-((int64_t)offset + 1i64)) - (ptrdiff_t)sizeof(V);
+				uint8_t* vptr = _ftop - (ptrdiff_t)(~((uint64_t)(int64_t)offset)) - (ptrdiff_t)sizeof(V);
 
 				if (vptr < _stop)
 					throw std::runtime_error(_err_msg_frame_ovf);
@@ -38,24 +38,24 @@ namespace interpreter
 			}
 		}
 
-		template <VALUE T>
-		inline void __push_val(T value)
+		template <VALUE V>
+		inline void __push_val(V value)
 		{
-			_stop -= (ptrdiff_t)sizeof(T);
-			*((T*)_stop) = value;
+			_stop -= (ptrdiff_t)sizeof(V);
+			*((V*)_stop) = value;
 		}
 
-		template <VALUE T>
-		inline T& __top_val()
+		template <VALUE V>
+		inline V& __top_val()
 		{
-			return *((T*)_stop);
+			return *((V*)_stop);
 		}
 
-		template <VALUE T>
-		inline T __pop_val()
+		template <VALUE V>
+		inline V __pop_val()
 		{
-			T value = *((T*)_stop);
-			_stop += (ptrdiff_t)sizeof(T);
+			V value = *((V*)_stop);
+			_stop += (ptrdiff_t)sizeof(V);
 
 			return value;
 		}
@@ -79,69 +79,69 @@ namespace interpreter
 		void allocz(uint64_t size);
 		void dealloc(uint64_t size);
 
-		template <VALUE T>
+		template <VALUE V>
 		void load(ptrdiff_t offset)
 		{
-			if ((ptrdiff_t)sizeof(T) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_offset())
 				throw std::runtime_error(_err_msg_stack_ovf);
 			else
-				__push_val<T>(*((T*)__get_vptr<T>(offset)));
+				__push_val<V>(*((V*)__get_vptr<V>(offset)));
 		}
 
-		template <VALUE T>
+		template <VALUE V>
 		void store(ptrdiff_t offset)
 		{
-			if ((ptrdiff_t)sizeof(T) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_offset())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
-				*((T*)__get_vptr<T>(offset)) = __pop_val<T>();
+				*((V*)__get_vptr<V>(offset)) = __pop_val<V>();
 		}
 
-		template <VALUE T>
-		void push(T value)
+		template <VALUE V>
+		void push(V value)
 		{
-			if ((ptrdiff_t)sizeof(T) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_offset())
 				throw std::runtime_error(_err_msg_stack_ovf);
 			else
-				__push_val<T>(value);
+				__push_val<V>(value);
 		}
 
-		template <VALUE T>
+		template <VALUE V>
 		void dup()
 		{
-			if ((ptrdiff_t)sizeof(T) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_offset())
 				throw std::runtime_error(_err_msg_stack_ovf);
-			else if ((ptrdiff_t)sizeof(T) > __bot_offset())
+			else if ((ptrdiff_t)sizeof(V) > __bot_offset())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
-				__push_val<T>(__top_val<T>());
+				__push_val<V>(__top_val<V>());
 		}
 
-		template <VALUE T>
+		template <VALUE V>
 		void rem()
 		{
-			if ((ptrdiff_t)sizeof(T) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_offset())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
-				_stop += (ptrdiff_t)sizeof(T);
+				_stop += (ptrdiff_t)sizeof(V);
 		}
 
-		template <VALUE T>
-		T& top()
+		template <VALUE V>
+		V& top()
 		{
-			if ((ptrdiff_t)sizeof(T) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_offset())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
-				return __top_val<T>();
+				return __top_val<V>();
 		}
 
-		template <VALUE T>
-		T pop()
+		template <VALUE V>
+		V pop()
 		{
-			if ((ptrdiff_t)sizeof(T) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_offset())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
-				return __pop_val<T>();
+				return __pop_val<V>();
 		}
 	};
 }

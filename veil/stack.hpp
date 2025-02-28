@@ -51,17 +51,17 @@ namespace interpreter
 		inline void __push_ptr(const uint8_t* value);
 		inline uint8_t* __pop_ptr();
 
-		template <VALUE T>
+		template <VALUE V>
 		inline uint8_t* __get_vptr(ptrdiff_t offset);
 
-		template <VALUE T>
-		inline void __push_val(T value);
+		template <VALUE V>
+		inline void __push_val(V value);
 
-		template <VALUE T>
-		inline T& __top_val();
+		template <VALUE V>
+		inline V& __top_val();
 
-		template <VALUE T>
-		inline T __pop_val();
+		template <VALUE V>
+		inline V __pop_val();
 
 	public:
 		stack() = delete;
@@ -86,26 +86,26 @@ namespace interpreter
 		void allocz(uint64_t size);
 		void dealloc(uint64_t size);
 
-		template <VALUE T>
+		template <VALUE V>
 		void load(ptrdiff_t offset);
 
-		template <VALUE T>
+		template <VALUE V>
 		void store(ptrdiff_t offset);
 
-		template <VALUE T>
-		void push(T value);
+		template <VALUE V>
+		void push(V value);
 
-		template <VALUE T>
+		template <VALUE V>
 		void dup();
 
-		template <VALUE T>
+		template <VALUE V>
 		void rem();
 
-		template <VALUE T>
-		T& top();
+		template <VALUE V>
+		V& top();
 
-		template <VALUE T>
-		T pop();
+		template <VALUE V>
+		V pop();
 
 		stack& operator=(const stack& o) = delete;
 

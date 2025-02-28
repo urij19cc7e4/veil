@@ -50,7 +50,7 @@ void stack<std::endian::big>::push_frame(const uint8_t* value)
 
 uint8_t* stack<std::endian::big>::pop_frame()
 {
-	if ((ptrdiff_t)(sizeof(uint64_t) * 2ui64) > __bot_offset())
+	if ((ptrdiff_t)0 != __bot_offset())
 		throw std::runtime_error(_err_msg_stack_unf);
 	{
 		_stop = _ftop;

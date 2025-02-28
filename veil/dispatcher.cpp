@@ -11,6 +11,24 @@ using namespace std;
 #define __2_POW_31 2147483648.0
 #define __0 0.0
 
+dispatcher::dispatcher(const uint8_t* code, uint64_t size) : _stack(size), _opptr(code), _state() {}
+
+dispatcher::dispatcher(dispatcher&& o) noexcept : _stack(move(o._stack)), _opptr(move(o._opptr)), _state(move(o._state))
+{
+	o._opptr = (const uint8_t*)nullptr;
+	o._state = move(state());
+}
+
+void dispatcher::exit()
+{
+	_stack.pop_frame();
+}
+
+void dispatcher::init()
+{
+	_stack.push_frame((const uint8_t*)nullptr);
+}
+
 void dispatcher::loop()
 {
 	while (true)
@@ -20,6 +38,26 @@ void dispatcher::loop()
 
 		switch (__operand)
 		{
+		case op::nop:
+			break;
+
+		case op::exit:
+		{
+			return;
+		}
+
+		case op::nativecall:
+		{
+			throw;
+			break;
+		}
+
+		case op::ret:
+		{
+			_opptr = _stack.pop_frame();
+			break;
+		}
+
 		case op::call_64:
 		{
 			__call<val64>();
@@ -44,21 +82,25 @@ void dispatcher::loop()
 			break;
 		}
 
-		case op::nativecall:
+		case op::memcpy:
 		{
-			throw;
+			uint8_t* dst = _stack.pop_ptr();
+			uint8_t* src = _stack.pop_ptr();
+			uint64_t c = _stack.pop<val64>().ui;
+
+			memcpy(dst, src, c);
+
 			break;
 		}
 
-		case op::ret:
+		case op::memset:
 		{
-			_opptr = _stack.pop_frame();
-			break;
-		}
+			uint8_t* dst = _stack.pop_ptr();
+			uint8_t val = _stack.pop<val8>().ui;
+			uint64_t c = _stack.pop<val64>().ui;
 
-		case op::outerret:
-		{
-			goto OUTERRET;
+			memset(dst, val, c);
+
 			break;
 		}
 
@@ -142,7 +184,7 @@ void dispatcher::loop()
 
 		case op::push_state:
 		{
-			_stack.push(((state_val)_state).value);
+			_stack.push((state_val(_state)).__value);
 			break;
 		}
 
@@ -166,7 +208,7 @@ void dispatcher::loop()
 
 		case op::pop_state:
 		{
-			_state = ((state_val)_stack.pop<val16>()).state;
+			_state = (state_val(_stack.pop<val16>())).__state;
 			break;
 		}
 
@@ -551,28 +593,6 @@ void dispatcher::loop()
 		case op::dup_8:
 		{
 			_stack.dup<val8>();
-			break;
-		}
-
-		case op::memcpy:
-		{
-			uint8_t* dst = _stack.pop_ptr();
-			uint8_t* src = _stack.pop_ptr();
-			uint64_t c = _stack.pop<val64>().ui;
-
-			memcpy(dst, src, c);
-
-			break;
-		}
-
-		case op::memset:
-		{
-			uint8_t* dst = _stack.pop_ptr();
-			uint8_t val = _stack.pop<val8>().ui;
-			uint64_t c = _stack.pop<val64>().ui;
-
-			memset(dst, val, c);
-
 			break;
 		}
 
@@ -1633,6 +1653,26 @@ void dispatcher::loop()
 		}
 		}
 	}
+}
 
-	OUTERRET:
+void dispatcher::push_ptr(const uint8_t* value)
+{
+	_stack.push_ptr(value);
+}
+
+uint8_t* dispatcher::pop_ptr()
+{
+	return _stack.pop_ptr();
+}
+
+dispatcher& dispatcher::operator=(dispatcher&& o) noexcept
+{
+	_stack = move(o._stack);
+	_opptr = move(o._opptr);
+	_state = move(o._state);
+
+	o._opptr = (const uint8_t*)nullptr;
+	o._state = move(state());
+
+	return *this;
 }

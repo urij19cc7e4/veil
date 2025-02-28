@@ -8,6 +8,26 @@ namespace interpreter
 	{
 		// Pointer takes 64 bits on frame and stack on all systems
 
+		// nop - no operation
+
+		nop,				// [ op (8) ]
+
+		// exit - exits interpreter's loop
+
+		exit,				// [ op (8) ]
+
+		// nativecall - not implemented
+
+		nativecall,			// [ op (8) ]
+
+		// ret - transfers control flow to the instruction pointer stored over stack frame
+		// 
+		//       1. Current stack pointer is assigned stack frame pointer
+		//       2. Stack frame pointer is popped from stack
+		//       3. Control flow pointer is popped from stack
+
+		ret,				// [ op (8) ]
+
 		// call_b - transfers control flow to the instruction by b-bit signed integer
 		//          offset value from the instruction following the given instruction
 		// 
@@ -21,21 +41,21 @@ namespace interpreter
 		call_16,			// [ op (8) ][ offset (16) ]
 		call_8,				// [ op (8) ][ offset (8) ]
 
-		// nativecall - not implemented
+		// memcpy - pops destination memory region pointer, source memory region pointer,
+		//          64-bit unsigned integer memory region size value
+		//          from stack in the specified order and
+		//          copies source memory region content to destination memory region
+		//          affected flags: none
 
-		nativecall,
+		memcpy,				// [ op (8) ]
 
-		// ret - transfers control flow to the instruction pointer stored over stack frame
-		// 
-		//       1. Current stack pointer is assigned stack frame pointer
-		//       2. Stack frame pointer is popped from stack
-		//       3. Control flow pointer is popped from stack
+		// memset - pops destination memory region pointer, 8-bit fill value,
+		//          64-bit unsigned integer memory region size value
+		//          from stack in the specified order and
+		//          fills destination memory region with fill value
+		//          affected flags: none
 
-		ret,				// [ op (8) ]
-
-		// outerret - stops interpreter's work
-
-		outerret,			// [ op (8) ]
+		memset,				// [ op (8) ]
 
 		// l_alloc - allocates 16-bit unsigned integer byte count value on stack
 		//           affected flags: none
@@ -255,22 +275,6 @@ namespace interpreter
 		dup_32,				// [ op (8) ]
 		dup_16,				// [ op (8) ]
 		dup_8,				// [ op (8) ]
-
-		// memcpy - pops destination memory region pointer, source memory region pointer,
-		//          64-bit unsigned integer memory region size value
-		//          from stack in the specified order and
-		//          copies source memory region content to destination memory region
-		//          affected flags: none
-
-		memcpy,				// [ op (8) ]
-
-		// memset - pops destination memory region pointer, 8-bit fill value,
-		//          64-bit unsigned integer memory region size value
-		//          from stack in the specified order and
-		//          fills destination memory region with fill value
-		//          affected flags: none
-
-		memset,				// [ op (8) ]
 
 		// ptrcpy_b - pops pointer #1 and pointer #2 from stack in the specified order
 		//            and moves pointer #1 b-bit value to pointer #2 b-bit value

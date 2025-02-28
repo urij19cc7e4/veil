@@ -681,7 +681,7 @@ namespace interpreter
 			auto ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
-			_state.eval.bits.iovf = (v.si & si) != (vui_t)0 && v.si > numeric_limits<vui_t>::max() / si;
+			_state.eval.bits.iovf = (v.ui & ui) != (vui_t)0 && v.ui > numeric_limits<vui_t>::max() / ui;
 			_state.eval.bits.iunf = false;
 
 			v.ui *= ui;
@@ -728,11 +728,31 @@ namespace interpreter
 
 	public:
 		dispatcher() = delete;
-		dispatcher(const uint8_t* code, uint64_t size = (1ui64 << 20ui64));
+		dispatcher(const uint8_t* code, uint64_t size);
 		dispatcher(const dispatcher& o) = delete;
-		dispatcher(dispatcher&& o);
-		~dispatcher();
+		dispatcher(dispatcher&& o) noexcept;
+		~dispatcher() noexcept=default;
 
+		void exit();
+		void init();
 		void loop();
+
+		void push_ptr(const uint8_t* value);
+		uint8_t* pop_ptr();
+
+		template <VALUE V>
+		void push_val(V value)
+		{
+			_stack.push(value);
+		}
+
+		template <VALUE V>
+		V pop_val()
+		{
+			return _stack.pop<V>();
+		}
+
+		dispatcher& operator=(const dispatcher& o) = delete;
+		dispatcher& operator=(dispatcher&& o) noexcept;
 	};
 }
