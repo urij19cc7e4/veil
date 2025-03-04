@@ -416,10 +416,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="compiler.hpp" />
+    <ClInclude Include="define.hpp" />
     <ClInclude Include="dispatcher.hpp" />
     <ClInclude Include="interpreter.hpp" />
     <ClInclude Include="interpreter_type.hpp" />
     <ClInclude Include="op.hpp" />
+    <ClInclude Include="op_asm.hpp" />
     <ClInclude Include="stack.hpp" />
     <ClInclude Include="stack_be.hpp" />
     <ClInclude Include="stack_le.hpp" />

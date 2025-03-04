@@ -1,13 +1,15 @@
 #pragma once
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 
+#include "define.hpp"
+#include "interpreter_type.hpp"
 #include "op.hpp"
 #include "stack_be.hpp"
 #include "stack_le.hpp"
-
-#define MSVCROTATE
 
 #ifdef MSVCROTATE
 #include <intrin.h>
@@ -20,7 +22,7 @@ namespace interpreter
 	struct msvcrotate;
 
 	template <>
-	struct msvcrotate<val64>
+	struct msvcrotate<val64<>>
 	{
 		static inline uint64_t rotl(uint64_t value, uint8_t count)
 		{
@@ -34,7 +36,7 @@ namespace interpreter
 	};
 
 	template <>
-	struct msvcrotate<val32>
+	struct msvcrotate<val32<>>
 	{
 		static inline uint32_t rotl(uint32_t value, uint8_t count)
 		{
@@ -48,7 +50,7 @@ namespace interpreter
 	};
 
 	template <>
-	struct msvcrotate<val16>
+	struct msvcrotate<val16<>>
 	{
 		static inline uint16_t rotl(uint16_t value, uint8_t count)
 		{
@@ -62,7 +64,7 @@ namespace interpreter
 	};
 
 	template <>
-	struct msvcrotate<val8>
+	struct msvcrotate<val8<>>
 	{
 		static inline uint8_t rotl(uint8_t value, uint8_t count)
 		{
@@ -79,12 +81,43 @@ namespace interpreter
 	class dispatcher
 	{
 	private:
+		static constexpr const char _err_msg_fetch_code[] = "Fetch out of code range";
+		static constexpr const char _err_msg_wrong_fltp[] = "Wrong float class";
+		static constexpr const char _err_msg_wrong_opnd[] = "Wrong operand";
+		static constexpr const char _err_msg_wrong_type[] = "Wrong mask type";
+
+	#ifdef FETCHCHECK
+		const uint8_t* _code_beg;
+		const uint8_t* _code_end;
+	#endif
+
 		stack<std::endian::native> _stack;
 		const uint8_t* _opptr;
 		state _state;
 
+		template <typename T>
+		inline T fetch()
+		{
+		#ifdef FETCHCHECK
+			if (_opptr < _code_beg || _opptr + (ptrdiff_t)sizeof(T) > _code_end)
+				throw std::runtime_error(_err_msg_fetch_code);
+			else
+			{
+				T t = *((T*)_opptr);
+				_opptr += (ptrdiff_t)sizeof(T);
+
+				return t;
+			}
+		#else
+			T t = *((T*)_opptr);
+			_opptr += (ptrdiff_t)sizeof(T);
+
+			return t;
+		#endif
+		}
+
 		template <VALUE V>
-		inline bool __mask_cmp(V _mask, type _type)
+		inline bool is_state_match_mask(V _mask, type _type)
 		{
 			switch (_type)
 			{
@@ -109,12 +142,17 @@ namespace interpreter
 			}
 
 			default:
-				throw;
+			#ifdef MTYPECHECK
+				throw std::runtime_error(_err_msg_wrong_type);
+			#else
+				__assume(false);
+			#endif
+				break;
 			}
 		}
 
 		template <>
-		inline bool __mask_cmp<val8>(val8 _mask, type _type)
+		inline bool is_state_match_mask<val8<>>(val8<> _mask, type _type)
 		{
 			switch (_type)
 			{
@@ -125,14 +163,19 @@ namespace interpreter
 				return (_state.eval.byte.value & _mask.ui) == _mask.ui;
 
 			default:
-				throw;
+			#ifdef MTYPECHECK
+				throw std::runtime_error(_err_msg_wrong_type);
+			#else
+				__assume(false);
+			#endif
+				break;
 			}
 		}
 
 		template <VALUE V>
 		inline void __and()
 		{
-			auto ui = _stack.pop<V>().ui;
+			decltype(V::ui) ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
 			v.ui &= ui;
@@ -141,18 +184,16 @@ namespace interpreter
 		template <VALUE V>
 		inline void __call()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
-			_stack.push_frame(_opptr);
+			_stack.push_frame((uintptr_t)_opptr);
 			_opptr += os;
 		}
 
 		template <VALUE V>
 		inline void __fadd()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 			V& v = _stack.top<V>();
 
 			v.f += f;
@@ -161,8 +202,8 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fcmp()
 		{
-			auto f_1 = _stack.pop<V>().f;
-			auto f_2 = _stack.pop<V>().f;
+			decltype(V::f) f_1 = _stack.pop<V>().f;
+			decltype(V::f) f_2 = _stack.pop<V>().f;
 
 			_state.comp.bits.above = !(f_1 <= f_2);
 			_state.comp.bits.below = !(f_1 >= f_2);
@@ -171,7 +212,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fdiv()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 			V& v = _stack.top<V>();
 
 			v.f /= f;
@@ -180,7 +221,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fevl()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 
 			_state.eval.bits.fzer = false;
 			_state.eval.bits.fsub = false;
@@ -211,7 +252,11 @@ namespace interpreter
 				break;
 
 			default:
-				throw;
+			#ifdef FLOATCHECK
+				throw std::runtime_error(_err_msg_wrong_fltp);
+			#else
+				__assume(false);
+			#endif
 				break;
 			}
 		}
@@ -219,7 +264,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fmod()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 			V& v = _stack.top<V>();
 
 			v.f = fmod(v.f, f);
@@ -228,7 +273,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fmul()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 			V& v = _stack.top<V>();
 
 			v.f *= f;
@@ -245,7 +290,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __fsub()
 		{
-			auto f = _stack.pop<V>().f;
+			decltype(V::f) f = _stack.pop<V>().f;
 			V& v = _stack.top<V>();
 
 			v.f -= f;
@@ -254,9 +299,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			_opptr += os;
 		}
@@ -264,9 +307,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_a()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (_state.comp.bits.above && !_state.comp.bits.below)
 				_opptr += os;
@@ -275,9 +316,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_ae()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (!_state.comp.bits.below)
 				_opptr += os;
@@ -286,9 +325,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_b()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (!_state.comp.bits.above && _state.comp.bits.below)
 				_opptr += os;
@@ -297,9 +334,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_be()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (!_state.comp.bits.above)
 				_opptr += os;
@@ -308,9 +343,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_e()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (!_state.comp.bits.above && !_state.comp.bits.below)
 				_opptr += os;
@@ -319,9 +352,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_ne()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if ((bool)(_state.comp.bits.above ^ _state.comp.bits.below))
 				_opptr += os;
@@ -330,9 +361,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_un()
 		{
-			using vsi_t = decltype(V::si);
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
 			if (_state.comp.bits.above && _state.comp.bits.below)
 				_opptr += os;
@@ -341,26 +370,19 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_msk()
 		{
-			using vsi_t = decltype(V::si);
+			type _type = fetch<type>();
+			V _mask = fetch<V>();
 
-			type _type = *((type*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(type);
+			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
-			V _mask = *((V*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(V);
-
-			ptrdiff_t os = (ptrdiff_t) * ((vsi_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(vsi_t);
-
-			if (__mask_cmp(_mask, _type))
+			if (is_state_match_mask(_mask, _type))
 				_opptr += os;
 		}
 
 		template <VALUE V>
 		inline void __l_load()
 		{
-			ptrdiff_t os = (ptrdiff_t) * ((int16_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(int16_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<int16_t>();
 
 			_stack.load<V>(os);
 		}
@@ -368,8 +390,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __l_store()
 		{
-			ptrdiff_t os = (ptrdiff_t) * ((int16_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(int16_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<int16_t>();
 
 			_stack.store<V>(os);
 		}
@@ -395,7 +416,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __or()
 		{
-			auto ui = _stack.pop<V>().ui;
+			decltype(V::ui) ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
 			v.ui |= ui;
@@ -431,8 +452,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __push()
 		{
-			V val = *((V*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(V);
+			V val = fetch<V>();
 
 			_stack.push<V>(val);
 		}
@@ -440,7 +460,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __rotl()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 		#ifdef MSVCROTATE
@@ -453,7 +473,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __rotr()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 		#ifdef MSVCROTATE
@@ -466,8 +486,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __s_load()
 		{
-			ptrdiff_t os = (ptrdiff_t) * ((int8_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(int8_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<int8_t>();
 
 			_stack.load<V>(os);
 		}
@@ -475,8 +494,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __s_store()
 		{
-			ptrdiff_t os = (ptrdiff_t) * ((int8_t*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(int8_t);
+			ptrdiff_t os = (ptrdiff_t)fetch<int8_t>();
 
 			_stack.store<V>(os);
 		}
@@ -485,7 +503,7 @@ namespace interpreter
 		inline void __sadd()
 		{
 			using vsi_t = decltype(V::si);
-			auto si = _stack.pop<V>().si;
+			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
 			_state.eval.bits.iovf = si > (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() - si;
@@ -497,8 +515,8 @@ namespace interpreter
 		template <VALUE V>
 		inline void __scmp()
 		{
-			auto si_1 = _stack.pop<V>().si;
-			auto si_2 = _stack.pop<V>().si;
+			decltype(V::si) si_1 = _stack.pop<V>().si;
+			decltype(V::si) si_2 = _stack.pop<V>().si;
 
 			_state.comp.bits.above = si_1 > si_2;
 			_state.comp.bits.below = si_1 < si_2;
@@ -518,10 +536,11 @@ namespace interpreter
 		template <VALUE V>
 		inline void __sdiv()
 		{
-			auto si = _stack.pop<V>().si;
+			using vsi_t = decltype(V::si);
+			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
-			bool zero = si == (decltype(V::si))0;
+			bool zero = si == (vsi_t)0;
 			_state.eval.bits.ierr = zero;
 
 			if (!zero)
@@ -542,10 +561,11 @@ namespace interpreter
 		template <VALUE V>
 		inline void __smod()
 		{
-			auto si = _stack.pop<V>().si;
+			using vsi_t = decltype(V::si);
+			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
-			bool zero = si == (decltype(V::si))0;
+			bool zero = si == (vsi_t)0;
 			_state.eval.bits.ierr = zero;
 
 			if (!zero)
@@ -556,7 +576,7 @@ namespace interpreter
 		inline void __smul()
 		{
 			using vsi_t = decltype(V::si);
-			auto si = _stack.pop<V>().si;
+			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
 			_state.eval.bits.iovf = false;
@@ -576,7 +596,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __sshl()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 			v.si <<= c;
@@ -585,7 +605,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __sshr()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 			v.si >>= c;
@@ -595,7 +615,7 @@ namespace interpreter
 		inline void __ssub()
 		{
 			using vsi_t = decltype(V::si);
-			auto si = _stack.pop<V>().si;
+			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
 			_state.eval.bits.iovf = si < (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() + si;
@@ -607,10 +627,11 @@ namespace interpreter
 		template <VALUE V>
 		inline void __uadd()
 		{
-			auto ui = _stack.pop<V>().ui;
+			using vui_t = decltype(V::ui);
+			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
-			_state.eval.bits.iovf = v.ui > numeric_limits<decltype(V::ui)>::max() - ui;
+			_state.eval.bits.iovf = v.ui > numeric_limits<vui_t>::max() - ui;
 			_state.eval.bits.iunf = false;
 
 			v.ui += ui;
@@ -619,8 +640,8 @@ namespace interpreter
 		template <VALUE V>
 		inline void __ucmp()
 		{
-			auto ui_1 = _stack.pop<V>().ui;
-			auto ui_2 = _stack.pop<V>().ui;
+			decltype(V::ui) ui_1 = _stack.pop<V>().ui;
+			decltype(V::ui) ui_2 = _stack.pop<V>().ui;
 
 			_state.comp.bits.above = ui_1 > ui_2;
 			_state.comp.bits.below = ui_1 < ui_2;
@@ -640,10 +661,11 @@ namespace interpreter
 		template <VALUE V>
 		inline void __udiv()
 		{
-			auto ui = _stack.pop<V>().ui;
+			using vui_t = decltype(V::ui);
+			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
-			bool zero = ui == (decltype(V::ui))0;
+			bool zero = ui == (vui_t)0;
 			_state.eval.bits.ierr = zero;
 
 			if (!zero)
@@ -664,10 +686,11 @@ namespace interpreter
 		template <VALUE V>
 		inline void __umod()
 		{
-			auto ui = _stack.pop<V>().ui;
+			using vui_t = decltype(V::ui);
+			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
-			bool zero = ui == (decltype(V::ui))0;
+			bool zero = ui == (vui_t)0;
 			_state.eval.bits.ierr = zero;
 
 			if (!zero)
@@ -678,7 +701,7 @@ namespace interpreter
 		inline void __umul()
 		{
 			using vui_t = decltype(V::ui);
-			auto ui = _stack.pop<V>().ui;
+			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
 			_state.eval.bits.iovf = (v.ui & ui) != (vui_t)0 && v.ui > numeric_limits<vui_t>::max() / ui;
@@ -690,7 +713,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __ushl()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 			v.ui <<= c;
@@ -699,7 +722,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __ushr()
 		{
-			uint8_t c = _stack.pop<val8>().ui;
+			uint8_t c = _stack.pop<val8<>>().ui;
 			V& v = _stack.top<V>();
 
 			v.ui >>= c;
@@ -708,7 +731,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __usub()
 		{
-			auto ui = _stack.pop<V>().ui;
+			decltype(V::ui) ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
 			_state.eval.bits.iovf = false;
@@ -720,15 +743,21 @@ namespace interpreter
 		template <VALUE V>
 		inline void __xor()
 		{
-			auto ui = _stack.pop<V>().ui;
+			decltype(V::ui) ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
 			v.ui ^= ui;
 		}
 
 	public:
+		static void rev_endian(uint8_t* code, uint64_t size);
+
 		dispatcher() = delete;
+	#ifdef FETCHCHECK
+		dispatcher(const uint8_t* bcode, const uint8_t* ecode, uint64_t size);
+	#else
 		dispatcher(const uint8_t* code, uint64_t size);
+	#endif
 		dispatcher(const dispatcher& o) = delete;
 		dispatcher(dispatcher&& o) noexcept;
 		~dispatcher() noexcept=default;
@@ -737,8 +766,8 @@ namespace interpreter
 		void init();
 		void loop();
 
-		void push_ptr(const uint8_t* value);
-		uint8_t* pop_ptr();
+		void push_ptr(uintptr_t value);
+		uintptr_t pop_ptr();
 
 		template <VALUE V>
 		void push_val(V value)

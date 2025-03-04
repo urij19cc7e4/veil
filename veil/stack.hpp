@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "define.hpp"
 #include "interpreter_type.hpp"
 
 namespace interpreter
@@ -12,6 +13,7 @@ namespace interpreter
 	class stack_base
 	{
 	private:
+		inline void __def_obj() noexcept;
 		inline void __del_obj() noexcept;
 		inline void __mov_obj(stack_base&& o) noexcept;
 
@@ -25,11 +27,11 @@ namespace interpreter
 		uint8_t* _data;
 		uint64_t _size;
 
-		uint8_t* _sbeg;
-		uint8_t* _send;
+		uintptr_t _sbeg;
+		uintptr_t _send;
 
-		uint8_t* _ftop;
-		uint8_t* _stop;
+		uintptr_t _ftop;
+		uintptr_t _stop;
 
 		stack_base() = delete;
 		stack_base(uint64_t size);
@@ -42,76 +44,5 @@ namespace interpreter
 	};
 
 	template <std::endian endianness>
-	class stack : public stack_base
-	{
-	private:
-		inline ptrdiff_t __top_offset() noexcept;
-		inline ptrdiff_t __bot_offset() noexcept;
-
-		inline void __push_ptr(const uint8_t* value);
-		inline uint8_t* __pop_ptr();
-
-		template <VALUE V>
-		inline uint8_t* __get_vptr(ptrdiff_t offset);
-
-		template <VALUE V>
-		inline void __push_val(V value);
-
-		template <VALUE V>
-		inline V& __top_val();
-
-		template <VALUE V>
-		inline V __pop_val();
-
-	public:
-		stack() = delete;
-		stack(uint64_t size);
-		stack(const stack& o) = delete;
-		stack(stack&& o) noexcept : stack_base(std::move(o)) {}
-		~stack() noexcept = default;
-
-		void push_frame(const uint8_t* value);
-		uint8_t* pop_frame();
-
-		void push_ptr(const uint8_t* value);
-		uint8_t* pop_ptr();
-
-		void load_frame();
-		void load_stack();
-
-		void store_frame();
-		void store_stack();
-
-		void alloc(uint64_t size);
-		void allocz(uint64_t size);
-		void dealloc(uint64_t size);
-
-		template <VALUE V>
-		void load(ptrdiff_t offset);
-
-		template <VALUE V>
-		void store(ptrdiff_t offset);
-
-		template <VALUE V>
-		void push(V value);
-
-		template <VALUE V>
-		void dup();
-
-		template <VALUE V>
-		void rem();
-
-		template <VALUE V>
-		V& top();
-
-		template <VALUE V>
-		V pop();
-
-		stack& operator=(const stack& o) = delete;
-
-		stack& operator=(stack&& o) noexcept
-		{
-			return (stack&)stack_base::operator=(std::move(o));
-		}
-	};
+	class stack : public stack_base {};
 }
