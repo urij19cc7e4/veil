@@ -8,8 +8,42 @@ namespace interpreter
 	class stack<std::endian::big> : public stack_base
 	{
 	private:
-		inline ptrdiff_t __top_offset() noexcept;
-		inline ptrdiff_t __bot_offset() noexcept;
+		static inline void __dil_push_ptr(uintptr_t& stop, uintptr_t value);
+		static inline uintptr_t __dil_pop_ptr(uintptr_t& stop);
+
+		template <VALUE V>
+		static inline uintptr_t __dil_get_vptr(const uintptr_t& ftop, ptrdiff_t offset)
+		{
+			if (offset >= (ptrdiff_t)0)
+				return ftop - offset - (ptrdiff_t)(sizeof(uint64_t) * 2ui64) - (ptrdiff_t)sizeof(V);
+			else
+				return ftop + (ptrdiff_t)(~((uintptr_t)offset));
+		}
+
+		template <VALUE V>
+		static inline void __dil_push_val(uintptr_t& stop, V value)
+		{
+			*((V*)stop) = value;
+			stop += (ptrdiff_t)sizeof(V);
+		}
+
+		template <VALUE V>
+		static inline V& __dil_top_val(const uintptr_t& stop)
+		{
+			return *((V*)(stop - (ptrdiff_t)sizeof(V)));
+		}
+
+		template <VALUE V>
+		static inline V __dil_pop_val(uintptr_t& stop)
+		{
+			stop -= (ptrdiff_t)sizeof(V);
+			V value = *((V*)stop);
+
+			return value;
+		}
+
+		inline ptrdiff_t __top_off() noexcept;
+		inline ptrdiff_t __bot_off() noexcept;
 
 		inline void __push_ptr(uintptr_t value);
 		inline uintptr_t __pop_ptr();
@@ -32,8 +66,7 @@ namespace interpreter
 			}
 			else
 			{
-				// uintptr_t vptr = _ftop + (ptrdiff_t)(-((int64_t)offset + 1i64));
-				uintptr_t vptr = _ftop + (ptrdiff_t)(~((uint64_t)(int64_t)offset));
+				uintptr_t vptr = ftop + (ptrdiff_t)(~((uintptr_t)offset));
 
 			#ifdef STACKCHECK
 				if ((uintptr_t)(vptr + (ptrdiff_t)sizeof(V)) > _stop)
@@ -69,6 +102,64 @@ namespace interpreter
 		}
 
 	public:
+		static inline void dil_push_frame(uintptr_t& ftop, uintptr_t& stop, uintptr_t value);
+		static inline uintptr_t dil_pop_frame(uintptr_t& ftop, uintptr_t& stop);
+
+		static inline void dil_push_ptr(uintptr_t& stop, uintptr_t value);
+		static inline uintptr_t dil_pop_ptr(uintptr_t& stop);
+
+		static inline void dil_load_frame(uintptr_t& ftop, uintptr_t& stop);
+		static inline void dil_load_stack(uintptr_t& stop);
+
+		static inline void dil_store_frame(const uintptr_t& ftop, uintptr_t& stop);
+		static inline void dil_store_stack(uintptr_t& stop);
+
+		static inline void dil_alloc(uintptr_t& stop, uint64_t size);
+		static inline void dil_allocz(uintptr_t& stop, uint64_t size);
+		static inline void dil_dealloc(uintptr_t& stop, uint64_t size);
+
+		template <VALUE V>
+		static inline void dil_load(const uintptr_t& ftop, uintptr_t& stop, ptrdiff_t offset)
+		{
+			__dil_push_val<V>(stop, *((V*)__dil_get_vptr<V>(ftop, offset)));
+		}
+
+		template <VALUE V>
+		static inline void dil_store(const uintptr_t& ftop, uintptr_t& stop, ptrdiff_t offset)
+		{
+			*((V*)__dil_get_vptr<V>(ftop, offset)) = __dil_pop_val<V>(stop);
+		}
+
+		template <VALUE V>
+		static inline void dil_push(uintptr_t& stop, V value)
+		{
+			__dil_push_val<V>(stop, value);
+		}
+
+		template <VALUE V>
+		static inline void dil_dup(uintptr_t& stop)
+		{
+			__dil_push_val<V>(stop, __dil_top_val<V>(stop));
+		}
+
+		template <VALUE V>
+		static inline void dil_rem(uintptr_t& stop)
+		{
+			stop -= (ptrdiff_t)sizeof(V);
+		}
+
+		template <VALUE V>
+		static inline V& dil_top(const uintptr_t& stop)
+		{
+			return __dil_top_val<V>(stop);
+		}
+
+		template <VALUE V>
+		static inline V dil_pop(uintptr_t& stop)
+		{
+			return __dil_pop_val<V>(stop);
+		}
+
 		stack() = delete;
 		stack(uint64_t size);
 		stack(const stack& o) = delete;
@@ -95,7 +186,7 @@ namespace interpreter
 		void load(ptrdiff_t offset)
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_off())
 				throw std::runtime_error(_err_msg_stack_ovf);
 			else
 				__push_val<V>(*((V*)__get_vptr<V>(offset)));
@@ -108,7 +199,7 @@ namespace interpreter
 		void store(ptrdiff_t offset)
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_off())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
 				*((V*)__get_vptr<V>(offset)) = __pop_val<V>();
@@ -121,7 +212,7 @@ namespace interpreter
 		void push(V value)
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_off())
 				throw std::runtime_error(_err_msg_stack_ovf);
 			else
 				__push_val<V>(value);
@@ -134,9 +225,9 @@ namespace interpreter
 		void dup()
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __top_offset())
+			if ((ptrdiff_t)sizeof(V) > __top_off())
 				throw std::runtime_error(_err_msg_stack_ovf);
-			else if ((ptrdiff_t)sizeof(V) > __bot_offset())
+			else if ((ptrdiff_t)sizeof(V) > __bot_off())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
 				__push_val<V>(__top_val<V>());
@@ -149,7 +240,7 @@ namespace interpreter
 		void rem()
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_off())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
 				_stop -= (ptrdiff_t)sizeof(V);
@@ -162,7 +253,7 @@ namespace interpreter
 		V& top()
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_off())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
 				return __top_val<V>();
@@ -175,7 +266,7 @@ namespace interpreter
 		V pop()
 		{
 		#ifdef STACKCHECK
-			if ((ptrdiff_t)sizeof(V) > __bot_offset())
+			if ((ptrdiff_t)sizeof(V) > __bot_off())
 				throw std::runtime_error(_err_msg_stack_unf);
 			else
 				return __pop_val<V>();

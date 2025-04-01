@@ -48,6 +48,10 @@ void dispatcher::init()
 
 void dispatcher::loop()
 {
+#ifdef DEEPINLINE
+
+#endif
+
 	while (true)
 		switch (fetch<op>())
 		{

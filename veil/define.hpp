@@ -1,5 +1,10 @@
 #pragma once
 
+#define DEEPINLINE
+#define FLAGEXTEND
+
+#define OPINTCHECK
+
 #define FETCHCHECK
 #define STACKCHECK
 

@@ -96,6 +96,63 @@ namespace interpreter
 		state _state;
 
 		template <typename T>
+		static inline T dil_fetch(const uint8_t*&opptr)
+		{
+			T t = *((T*)opptr);
+			opptr += (ptrdiff_t)sizeof(T);
+
+			return t;
+		}
+
+		template <VALUE V>
+		static inline bool dil_match(const state&state,V _mask, type _type)
+		{
+			switch (_type)
+			{
+			case type::v0:
+			{
+			#pragma loop(unroll)
+				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
+					if ((state.eval.byte.value | _mask.v8[i].ui) == _mask.v8[i].ui)
+						return true;
+
+				return false;
+			}
+
+			case type::v1:
+			{
+			#pragma loop(unroll)
+				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
+					if ((state.eval.byte.value & _mask.v8[i].ui) == _mask.v8[i].ui)
+						return true;
+
+				return false;
+			}
+
+			default:
+				__assume(false);
+				break;
+			}
+		}
+
+		template <>
+		static inline bool dil_match<val8<>>(const state&state,val8<> _mask, type _type)
+		{
+			switch (_type)
+			{
+			case type::v0:
+				return (state.eval.byte.value | _mask.ui) == _mask.ui;
+
+			case type::v1:
+				return (state.eval.byte.value & _mask.ui) == _mask.ui;
+
+			default:
+				__assume(false);
+				break;
+			}
+		}
+
+		template <typename T>
 		inline T fetch()
 		{
 		#ifdef FETCHCHECK
@@ -117,7 +174,7 @@ namespace interpreter
 		}
 
 		template <VALUE V>
-		inline bool is_state_match_mask(V _mask, type _type)
+		inline bool match(V _mask, type _type)
 		{
 			switch (_type)
 			{
@@ -152,7 +209,7 @@ namespace interpreter
 		}
 
 		template <>
-		inline bool is_state_match_mask<val8<>>(val8<> _mask, type _type)
+		inline bool match<val8<>>(val8<> _mask, type _type)
 		{
 			switch (_type)
 			{
@@ -375,7 +432,7 @@ namespace interpreter
 
 			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
-			if (is_state_match_mask(_mask, _type))
+			if (match(_mask, _type))
 				_opptr += os;
 		}
 
@@ -400,7 +457,9 @@ namespace interpreter
 		{
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.ierr = v.si == numeric_limits<decltype(V::si)>::min();
+		#endif
 
 			v.si = -v.si;
 		}
@@ -506,8 +565,10 @@ namespace interpreter
 			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = si > (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() - si;
 			_state.eval.bits.iunf = si < (vsi_t)0 && v.si < numeric_limits<vsi_t>::min() - si;
+		#endif
 
 			v.si += si;
 		}
@@ -527,8 +588,10 @@ namespace interpreter
 		{
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = false;
 			_state.eval.bits.iunf = v.si == numeric_limits<decltype(V::si)>::min();
+		#endif
 
 			--v.si;
 		}
@@ -541,7 +604,9 @@ namespace interpreter
 			V& v = _stack.top<V>();
 
 			bool zero = si == (vsi_t)0;
+		#ifdef OPINTCHECK
 			_state.eval.bits.ierr = zero;
+		#endif
 
 			if (!zero)
 				v.si /= si;
@@ -552,8 +617,10 @@ namespace interpreter
 		{
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = v.si == numeric_limits<decltype(V::si)>::max();
 			_state.eval.bits.iunf = false;
+		#endif
 
 			++v.si;
 		}
@@ -566,7 +633,9 @@ namespace interpreter
 			V& v = _stack.top<V>();
 
 			bool zero = si == (vsi_t)0;
+		#ifdef OPINTCHECK
 			_state.eval.bits.ierr = zero;
+		#endif
 
 			if (!zero)
 				v.si %= si;
@@ -579,6 +648,7 @@ namespace interpreter
 			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = false;
 			_state.eval.bits.iunf = false;
 
@@ -589,6 +659,7 @@ namespace interpreter
 				else
 					_state.eval.bits.iunf = v.si < numeric_limits<vsi_t>::min() / si;
 			}
+		#endif
 
 			v.si *= si;
 		}
@@ -618,8 +689,10 @@ namespace interpreter
 			vsi_t si = _stack.pop<V>().si;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = si < (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() + si;
 			_state.eval.bits.iunf = si > (vsi_t)0 && v.si < numeric_limits<vsi_t>::min() + si;
+		#endif
 
 			v.si -= si;
 		}
@@ -631,8 +704,10 @@ namespace interpreter
 			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = v.ui > numeric_limits<vui_t>::max() - ui;
 			_state.eval.bits.iunf = false;
+		#endif
 
 			v.ui += ui;
 		}
@@ -652,8 +727,10 @@ namespace interpreter
 		{
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = false;
 			_state.eval.bits.iunf = v.ui == numeric_limits<decltype(V::ui)>::min();
+		#endif
 
 			--v.ui;
 		}
@@ -666,7 +743,9 @@ namespace interpreter
 			V& v = _stack.top<V>();
 
 			bool zero = ui == (vui_t)0;
+		#ifdef OPINTCHECK
 			_state.eval.bits.ierr = zero;
+		#endif
 
 			if (!zero)
 				v.ui /= ui;
@@ -677,8 +756,10 @@ namespace interpreter
 		{
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = v.ui == numeric_limits<decltype(V::ui)>::max();
 			_state.eval.bits.iunf = false;
+		#endif
 
 			++v.ui;
 		}
@@ -691,7 +772,9 @@ namespace interpreter
 			V& v = _stack.top<V>();
 
 			bool zero = ui == (vui_t)0;
+		#ifdef OPINTCHECK
 			_state.eval.bits.ierr = zero;
+		#endif
 
 			if (!zero)
 				v.ui %= ui;
@@ -704,8 +787,10 @@ namespace interpreter
 			vui_t ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = (v.ui & ui) != (vui_t)0 && v.ui > numeric_limits<vui_t>::max() / ui;
 			_state.eval.bits.iunf = false;
+		#endif
 
 			v.ui *= ui;
 		}
@@ -734,8 +819,10 @@ namespace interpreter
 			decltype(V::ui) ui = _stack.pop<V>().ui;
 			V& v = _stack.top<V>();
 
+		#ifdef OPINTCHECK
 			_state.eval.bits.iovf = false;
 			_state.eval.bits.iunf = v.ui < ui;
+		#endif
 
 			v.ui -= ui;
 		}
