@@ -39,6 +39,9 @@
     <ClCompile Include="stack_le.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="native.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="compiler.hpp">
@@ -71,5 +74,25 @@
     <ClInclude Include="op_asm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="native.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="arch_define.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ARM_32.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="ARM_64.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="x86_32.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="x86_64.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

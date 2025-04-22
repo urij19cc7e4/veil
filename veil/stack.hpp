@@ -41,8 +41,69 @@ namespace interpreter
 
 		stack_base& operator=(const stack_base& o) = delete;
 		stack_base& operator=(stack_base&& o) noexcept;
+
+	public:
+		inline uint8_t* get_data() const
+		{
+			return _data;
+		}
+
+		inline uint64_t get_size() const
+		{
+			return _size;
+		}
+
+		inline uintptr_t get_sbeg() const
+		{
+			return _sbeg;
+		}
+
+		inline uintptr_t get_send() const
+		{
+			return _send;
+		}
+
+		inline uintptr_t get_ftop() const
+		{
+			return _ftop;
+		}
+
+		inline uintptr_t get_stop() const
+		{
+			return _stop;
+		}
+
+		inline void set_data(uint8_t* data)
+		{
+			_data = data;
+		}
+
+		inline void set_size(uint64_t size)
+		{
+			_size = size;
+		}
+
+		inline void set_sbeg(uintptr_t sbeg)
+		{
+			_sbeg = sbeg;
+		}
+
+		inline void set_send(uintptr_t send)
+		{
+			_send = send;
+		}
+
+		inline void set_ftop(uintptr_t ftop)
+		{
+			_ftop = ftop;
+		}
+
+		inline void set_stop(uintptr_t stop)
+		{
+			_stop = stop;
+		}
 	};
 
-	template <std::endian endianness>
+	template <std::endian endianness = std::endian::native>
 	class stack : public stack_base {};
 }

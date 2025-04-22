@@ -266,7 +266,7 @@ namespace interpreter
 		}
 	};
 
-	template <std::endian endianness>
+	template <std::endian endianness = std::endian::native>
 	struct val16half;
 
 	template <>
@@ -320,7 +320,7 @@ namespace interpreter
 		}
 	};
 
-	template <std::endian endianness>
+	template <std::endian endianness = std::endian::native>
 	struct val32half;
 
 	template <>
@@ -379,7 +379,7 @@ namespace interpreter
 		}
 	};
 
-	template <std::endian endianness>
+	template <std::endian endianness = std::endian::native>
 	struct val64half;
 
 	template <>
@@ -440,15 +440,16 @@ namespace interpreter
 		}
 	};
 
+	template <std::endian endianness = std::endian::native>
 	union state_val
 	{
 	public:
 		state __state;
-		val16<std::endian::native> __value;
+		val16<endianness> __value;
 
 		inline state_val() noexcept : __value() {}
 		inline state_val(const state& s) noexcept : __state(s) {}
-		inline state_val(const val16<std::endian::native>& v) noexcept : __value(v) {}
+		inline state_val(const val16<endianness>& v) noexcept : __value(v) {}
 		inline state_val(const state_val& o) noexcept : __value(o.__value) {}
 		inline state_val(state_val&& o) noexcept : __value(std::move(o.__value)) {}
 		inline ~state_val() noexcept = default;

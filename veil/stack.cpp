@@ -23,14 +23,14 @@ inline void stack_base::__del_obj() noexcept
 
 inline void stack_base::__mov_obj(stack_base&& o) noexcept
 {
-	_data = o._data;
-	_size = o._size;
+	_data = move(o._data);
+	_size = move(o._size);
 
-	_sbeg = o._sbeg;
-	_send = o._send;
+	_sbeg = move(o._sbeg);
+	_send = move(o._send);
 
-	_ftop = o._ftop;
-	_stop = o._stop;
+	_ftop = move(o._ftop);
+	_stop = move(o._stop);
 }
 
 stack_base::stack_base(uint64_t size)

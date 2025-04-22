@@ -7,6 +7,7 @@
 
 #include "define.hpp"
 #include "interpreter_type.hpp"
+#include "native.hpp"
 #include "op.hpp"
 #include "stack_be.hpp"
 #include "stack_le.hpp"
@@ -17,13 +18,70 @@
 
 namespace interpreter
 {
+	template <VALUE V>
+	struct match
+	{
+	public:
+		static inline bool check(const state& state, V mask, type type)
+		{
+			switch (type)
+			{
+			case type::v0:
+			{
+			#pragma loop(unroll)
+				for (uint64_t i = 0ui64; i < mask.v8_count; ++i)
+					if ((state.eval.byte.value | mask.v8[i].ui) == mask.v8[i].ui)
+						return true;
+
+				return false;
+			}
+
+			case type::v1:
+			{
+			#pragma loop(unroll)
+				for (uint64_t i = 0ui64; i < mask.v8_count; ++i)
+					if ((state.eval.byte.value & mask.v8[i].ui) == mask.v8[i].ui)
+						return true;
+
+				return false;
+			}
+
+			default:
+				__assume(false);
+				break;
+			}
+		}
+	};
+
+	template <std::endian endianness>
+	struct match<val8<endianness>>
+	{
+	public:
+		static inline bool check(const state& state, val8<endianness> mask, type type)
+		{
+			switch (type)
+			{
+			case type::v0:
+				return (state.eval.byte.value | mask.ui) == mask.ui;
+
+			case type::v1:
+				return (state.eval.byte.value & mask.ui) == mask.ui;
+
+			default:
+				__assume(false);
+				break;
+			}
+		}
+	};
+
 #ifdef MSVCROTATE
 	template <VALUE V>
 	struct msvcrotate;
 
-	template <>
-	struct msvcrotate<val64<>>
+	template <std::endian endianness>
+	struct msvcrotate<val64<endianness>>
 	{
+	public:
 		static inline uint64_t rotl(uint64_t value, uint8_t count)
 		{
 			return _rotl64(value, count);
@@ -35,9 +93,10 @@ namespace interpreter
 		}
 	};
 
-	template <>
-	struct msvcrotate<val32<>>
+	template <std::endian endianness>
+	struct msvcrotate<val32<endianness>>
 	{
+	public:
 		static inline uint32_t rotl(uint32_t value, uint8_t count)
 		{
 			return _rotl(value, count);
@@ -49,9 +108,10 @@ namespace interpreter
 		}
 	};
 
-	template <>
-	struct msvcrotate<val16<>>
+	template <std::endian endianness>
+	struct msvcrotate<val16<endianness>>
 	{
+	public:
 		static inline uint16_t rotl(uint16_t value, uint8_t count)
 		{
 			return _rotl16(value, count);
@@ -63,9 +123,10 @@ namespace interpreter
 		}
 	};
 
-	template <>
-	struct msvcrotate<val8<>>
+	template <std::endian endianness>
+	struct msvcrotate<val8<endianness>>
 	{
+	public:
 		static inline uint8_t rotl(uint8_t value, uint8_t count)
 		{
 			return _rotl8(value, count);
@@ -81,6 +142,8 @@ namespace interpreter
 	class dispatcher
 	{
 	private:
+		using stack_type = stack<std::endian::native>;
+
 		static constexpr const char _err_msg_fetch_code[] = "Fetch out of code range";
 		static constexpr const char _err_msg_wrong_fltp[] = "Wrong float class";
 		static constexpr const char _err_msg_wrong_opnd[] = "Wrong operand";
@@ -91,142 +154,646 @@ namespace interpreter
 		const uint8_t* _code_end;
 	#endif
 
-		stack<std::endian::native> _stack;
+		nativehub _nativehub;
+		stack_type _stack;
 		const uint8_t* _opptr;
 		state _state;
 
-		template <typename T>
-		static inline T dil_fetch(const uint8_t*&opptr)
+		template <VALUE V>
+		static inline V dil_fetch(const uint8_t*&opptr)
 		{
-			T t = *((T*)opptr);
-			opptr += (ptrdiff_t)sizeof(T);
+			V t = *((V*)opptr);
+			opptr += (ptrdiff_t)sizeof(V);
 
 			return t;
 		}
 
 		template <VALUE V>
-		static inline bool dil_match(const state&state,V _mask, type _type)
+		static inline void __dil_and(uintptr_t& stop)
 		{
-			switch (_type)
-			{
-			case type::v0:
-			{
-			#pragma loop(unroll)
-				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
-					if ((state.eval.byte.value | _mask.v8[i].ui) == _mask.v8[i].ui)
-						return true;
+			decltype(V::ui) ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
 
-				return false;
-			}
+			v.ui &= ui;
+		}
 
-			case type::v1:
+		template <VALUE V>
+		static inline void __dil_call(const uint8_t*& opptr, uintptr_t& ftop, uintptr_t& stop)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			stack_type::dil_push_frame(ftop, stop, (uintptr_t)opptr);
+			opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_fadd(uintptr_t& stop)
+		{
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.f += f;
+		}
+
+		template <VALUE V>
+		static inline void __dil_fcmp(state& state, uintptr_t& stop)
+		{
+			decltype(V::f) f_1 = stack_type::dil_pop<V>(stop).f;
+			decltype(V::f) f_2 = stack_type::dil_pop<V>(stop).f;
+
+			state.comp.bits.above = !(f_1 <= f_2);
+			state.comp.bits.below = !(f_1 >= f_2);
+		}
+
+		template <VALUE V>
+		static inline void __dil_fdiv(uintptr_t& stop)
+		{
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.f /= f;
+		}
+
+		template <VALUE V>
+		static inline void __dil_fevl(state& state, uintptr_t& stop)
+		{
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+
+			state.eval.bits.fzer = false;
+			state.eval.bits.fsub = false;
+			state.eval.bits.finf = false;
+			state.eval.bits.fnan = false;
+			state.eval.bits.fnrm = false;
+
+			switch (fpclassify(f))
 			{
-			#pragma loop(unroll)
-				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
-					if ((state.eval.byte.value & _mask.v8[i].ui) == _mask.v8[i].ui)
-						return true;
+			case FP_ZERO:
+				state.eval.bits.fzer = true;
+				break;
 
-				return false;
-			}
+			case FP_SUBNORMAL:
+				state.eval.bits.fsub = true;
+				break;
+
+			case FP_INFINITE:
+				state.eval.bits.finf = true;
+				break;
+
+			case FP_NAN:
+				state.eval.bits.fnan = true;
+				break;
+
+			case FP_NORMAL:
+				state.eval.bits.fnrm = true;
+				break;
 
 			default:
+			#ifdef FLOATCHECK
+				throw std::runtime_error(_err_msg_wrong_fltp);
+			#else
 				__assume(false);
+			#endif
 				break;
 			}
 		}
 
-		template <>
-		static inline bool dil_match<val8<>>(const state&state,val8<> _mask, type _type)
+		template <VALUE V>
+		static inline void __dil_fmod(uintptr_t& stop)
 		{
-			switch (_type)
-			{
-			case type::v0:
-				return (state.eval.byte.value | _mask.ui) == _mask.ui;
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+			V& v = stack_type::dil_top<V>(stop);
 
-			case type::v1:
-				return (state.eval.byte.value & _mask.ui) == _mask.ui;
-
-			default:
-				__assume(false);
-				break;
-			}
+			v.f = fmod(v.f, f);
 		}
 
-		template <typename T>
-		inline T fetch()
+		template <VALUE V>
+		static inline void __dil_fmul(uintptr_t& stop)
 		{
-		#ifdef FETCHCHECK
-			if (_opptr < _code_beg || _opptr + (ptrdiff_t)sizeof(T) > _code_end)
-				throw std::runtime_error(_err_msg_fetch_code);
-			else
-			{
-				T t = *((T*)_opptr);
-				_opptr += (ptrdiff_t)sizeof(T);
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+			V& v = stack_type::dil_top<V>(stop);
 
-				return t;
-			}
+			v.f *= f;
+		}
+
+		template <VALUE V>
+		static inline void __dil_fneg(const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.f = -v.f;
+		}
+
+		template <VALUE V>
+		static inline void __dil_fsub(uintptr_t& stop)
+		{
+			decltype(V::f) f = stack_type::dil_pop<V>(stop).f;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.f -= f;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp(const uint8_t*& opptr)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_a(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (state.comp.bits.above && !state.comp.bits.below)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_ae(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (!state.comp.bits.below)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_b(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (!state.comp.bits.above && state.comp.bits.below)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_be(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (!state.comp.bits.above)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_e(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (!state.comp.bits.above && !state.comp.bits.below)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_ne(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if ((bool)(state.comp.bits.above ^ state.comp.bits.below))
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_un(const uint8_t*& opptr, const state& state)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (state.comp.bits.above && state.comp.bits.below)
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_jmp_msk(const uint8_t*& opptr, const state& state)
+		{
+			type _type = (type)dil_fetch<val8<>>(opptr).ui;
+			V _mask = dil_fetch<V>(opptr);
+
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<V>(opptr).si;
+
+			if (match<V>::check(state, _mask, _type))
+				opptr += os;
+		}
+
+		template <VALUE V>
+		static inline void __dil_l_load(const uint8_t*& opptr, const uintptr_t& ftop, uintptr_t& stop)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<val16<>>(opptr).si;
+
+			stack_type::dil_load<V>(ftop, stop, os);
+		}
+
+		template <VALUE V>
+		static inline void __dil_l_store(const uint8_t*& opptr, const uintptr_t& ftop, uintptr_t& stop)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<val16<>>(opptr).si;
+
+			stack_type::dil_store<V>(ftop, stop, os);
+		}
+
+		template <VALUE V>
+		static inline void __dil_neg(state& state, const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.ierr = v.si == numeric_limits<decltype(V::si)>::min();
+		#endif
+
+			v.si = -v.si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_not(const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.ui = ~v.ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_or(uintptr_t& stop)
+		{
+			decltype(V::ui) ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.ui |= ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ptrcpy(uintptr_t& stop)
+		{
+			V* ptr_1 = (V*)stack_type::dil_pop_ptr(stop);
+			V* ptr_2 = (V*)stack_type::dil_pop_ptr(stop);
+
+			*ptr_2 = *ptr_1;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ptrget(uintptr_t& stop)
+		{
+			V* ptr = (V*)stack_type::dil_pop_ptr(stop);
+			V val = *ptr;
+
+			stack_type::dil_push<V>(stop, val);
+		}
+
+		template <VALUE V>
+		static inline void __dil_ptrset(uintptr_t& stop)
+		{
+			V* ptr = (V*)stack_type::dil_pop_ptr(stop);
+			V val = stack_type::dil_pop<V>(stop);
+
+			*ptr = val;
+		}
+
+		template <VALUE V>
+		static inline void __dil_push(const uint8_t*& opptr, uintptr_t& stop)
+		{
+			V val = dil_fetch<V>(opptr);
+
+			stack_type::dil_push<V>(stop, val);
+		}
+
+		template <VALUE V>
+		static inline void __dil_rotl(uintptr_t& stop)
+		{
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef MSVCROTATE
+			v.ui = msvcrotate<V>::rotl(v.ui, c);
 		#else
-			T t = *((T*)_opptr);
-			_opptr += (ptrdiff_t)sizeof(T);
-
-			return t;
+			v.ui = (v.ui << c) | (v.ui >> ((uint8_t)sizeof(V) * 8ui8 - c));
 		#endif
 		}
 
 		template <VALUE V>
-		inline bool match(V _mask, type _type)
+		static inline void __dil_rotr(uintptr_t& stop)
 		{
-			switch (_type)
-			{
-			case type::v0:
-			{
-			#pragma loop(unroll)
-				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
-					if ((_state.eval.byte.value | _mask.v8[i].ui) == _mask.v8[i].ui)
-						return true;
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
 
-				return false;
-			}
-
-			case type::v1:
-			{
-			#pragma loop(unroll)
-				for (uint64_t i = 0ui64; i < _mask.v8_count; ++i)
-					if ((_state.eval.byte.value & _mask.v8[i].ui) == _mask.v8[i].ui)
-						return true;
-
-				return false;
-			}
-
-			default:
-			#ifdef MTYPECHECK
-				throw std::runtime_error(_err_msg_wrong_type);
-			#else
-				__assume(false);
-			#endif
-				break;
-			}
+		#ifdef MSVCROTATE
+			v.ui = msvcrotate<V>::rotr(v.ui, c);
+		#else
+			v.ui = (v.ui >> c) | (v.ui << ((uint8_t)sizeof(V) * 8ui8 - c));
+		#endif
 		}
 
-		template <>
-		inline bool match<val8<>>(val8<> _mask, type _type)
+		template <VALUE V>
+		static inline void __dil_s_load(const uint8_t*& opptr, const uintptr_t& ftop, uintptr_t& stop)
 		{
-			switch (_type)
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<val8<>>(opptr).si;
+
+			stack_type::dil_load<V>(ftop, stop, os);
+		}
+
+		template <VALUE V>
+		static inline void __dil_s_store(const uint8_t*& opptr, const uintptr_t& ftop, uintptr_t& stop)
+		{
+			ptrdiff_t os = (ptrdiff_t)dil_fetch<val8<>>(opptr).si;
+
+			stack_type::dil_store<V>(ftop, stop, os);
+		}
+
+		template <VALUE V>
+		static inline void __dil_sadd(state& state, uintptr_t& stop)
+		{
+			using vsi_t = decltype(V::si);
+			vsi_t si = stack_type::dil_pop<V>(stop).si;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = si > (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() - si;
+			state.eval.bits.iunf = si < (vsi_t)0 && v.si < numeric_limits<vsi_t>::min() - si;
+		#endif
+
+			v.si += si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_scmp(state& state, uintptr_t& stop)
+		{
+			decltype(V::si) si_1 = stack_type::dil_pop<V>(stop).si;
+			decltype(V::si) si_2 = stack_type::dil_pop<V>(stop).si;
+
+			state.comp.bits.above = si_1 > si_2;
+			state.comp.bits.below = si_1 < si_2;
+		}
+
+		template <VALUE V>
+		static inline void __dil_sdec(state& state, const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = false;
+			state.eval.bits.iunf = v.si == numeric_limits<decltype(V::si)>::min();
+		#endif
+
+			--v.si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_sdiv(state& state, uintptr_t& stop)
+		{
+			using vsi_t = decltype(V::si);
+			vsi_t si = stack_type::dil_pop<V>(stop).si;
+			V& v = stack_type::dil_top<V>(stop);
+
+			bool zero = si == (vsi_t)0;
+		#ifdef OPINTCHECK
+			state.eval.bits.ierr = zero;
+		#endif
+
+			if (!zero)
+				v.si /= si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_sinc(state& state, const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = v.si == numeric_limits<decltype(V::si)>::max();
+			state.eval.bits.iunf = false;
+		#endif
+
+			++v.si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_smod(state& state, uintptr_t& stop)
+		{
+			using vsi_t = decltype(V::si);
+			vsi_t si = stack_type::dil_pop<V>(stop).si;
+			V& v = stack_type::dil_top<V>(stop);
+
+			bool zero = si == (vsi_t)0;
+		#ifdef OPINTCHECK
+			state.eval.bits.ierr = zero;
+		#endif
+
+			if (!zero)
+				v.si %= si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_smul(state& state, uintptr_t& stop)
+		{
+			using vsi_t = decltype(V::si);
+			vsi_t si = stack_type::dil_pop<V>(stop).si;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = false;
+			state.eval.bits.iunf = false;
+
+			if ((v.si & si) != (vsi_t)0)
 			{
-			case type::v0:
-				return (_state.eval.byte.value | _mask.ui) == _mask.ui;
-
-			case type::v1:
-				return (_state.eval.byte.value & _mask.ui) == _mask.ui;
-
-			default:
-			#ifdef MTYPECHECK
-				throw std::runtime_error(_err_msg_wrong_type);
-			#else
-				__assume(false);
-			#endif
-				break;
+				if ((v.si ^ si) >= (vsi_t)0)
+					state.eval.bits.iovf = v.si > numeric_limits<vsi_t>::max() / si;
+				else
+					state.eval.bits.iunf = v.si < numeric_limits<vsi_t>::min() / si;
 			}
+		#endif
+
+			v.si *= si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_sshl(uintptr_t& stop)
+		{
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.si <<= c;
+		}
+
+		template <VALUE V>
+		static inline void __dil_sshr(uintptr_t& stop)
+		{
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.si >>= c;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ssub(state& state, uintptr_t& stop)
+		{
+			using vsi_t = decltype(V::si);
+			vsi_t si = stack_type::dil_pop<V>(stop).si;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = si < (vsi_t)0 && v.si > numeric_limits<vsi_t>::max() + si;
+			state.eval.bits.iunf = si > (vsi_t)0 && v.si < numeric_limits<vsi_t>::min() + si;
+		#endif
+
+			v.si -= si;
+		}
+
+		template <VALUE V>
+		static inline void __dil_uadd(state& state, uintptr_t& stop)
+		{
+			using vui_t = decltype(V::ui);
+			vui_t ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = v.ui > numeric_limits<vui_t>::max() - ui;
+			state.eval.bits.iunf = false;
+		#endif
+
+			v.ui += ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ucmp(state& state, uintptr_t& stop)
+		{
+			decltype(V::ui) ui_1 = stack_type::dil_pop<V>(stop).ui;
+			decltype(V::ui) ui_2 = stack_type::dil_pop<V>(stop).ui;
+
+			state.comp.bits.above = ui_1 > ui_2;
+			state.comp.bits.below = ui_1 < ui_2;
+		}
+
+		template <VALUE V>
+		static inline void __dil_udec(state& state, const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = false;
+			state.eval.bits.iunf = v.ui == numeric_limits<decltype(V::ui)>::min();
+		#endif
+
+			--v.ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_udiv(state& state, uintptr_t& stop)
+		{
+			using vui_t = decltype(V::ui);
+			vui_t ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			bool zero = ui == (vui_t)0;
+		#ifdef OPINTCHECK
+			state.eval.bits.ierr = zero;
+		#endif
+
+			if (!zero)
+				v.ui /= ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_uinc(state& state, const uintptr_t& stop)
+		{
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = v.ui == numeric_limits<decltype(V::ui)>::max();
+			state.eval.bits.iunf = false;
+		#endif
+
+			++v.ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_umod(state& state, uintptr_t& stop)
+		{
+			using vui_t = decltype(V::ui);
+			vui_t ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			bool zero = ui == (vui_t)0;
+		#ifdef OPINTCHECK
+			state.eval.bits.ierr = zero;
+		#endif
+
+			if (!zero)
+				v.ui %= ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_umul(state& state, uintptr_t& stop)
+		{
+			using vui_t = decltype(V::ui);
+			vui_t ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = (v.ui & ui) != (vui_t)0 && v.ui > numeric_limits<vui_t>::max() / ui;
+			state.eval.bits.iunf = false;
+		#endif
+
+			v.ui *= ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ushl(uintptr_t& stop)
+		{
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.ui <<= c;
+		}
+
+		template <VALUE V>
+		static inline void __dil_ushr(uintptr_t& stop)
+		{
+			uint8_t c = stack_type::dil_pop<val8<>>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.ui >>= c;
+		}
+
+		template <VALUE V>
+		static inline void __dil_usub(state& state, uintptr_t& stop)
+		{
+			decltype(V::ui) ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+		#ifdef OPINTCHECK
+			state.eval.bits.iovf = false;
+			state.eval.bits.iunf = v.ui < ui;
+		#endif
+
+			v.ui -= ui;
+		}
+
+		template <VALUE V>
+		static inline void __dil_xor(uintptr_t& stop)
+		{
+			decltype(V::ui) ui = stack_type::dil_pop<V>(stop).ui;
+			V& v = stack_type::dil_top<V>(stop);
+
+			v.ui ^= ui;
+		}
+
+		template <VALUE V>
+		inline V fetch()
+		{
+		#ifdef FETCHCHECK
+			if (_opptr < _code_beg || _opptr + (ptrdiff_t)sizeof(V) > _code_end)
+				throw std::runtime_error(_err_msg_fetch_code);
+			else
+			{
+				V t = *((V*)_opptr);
+				_opptr += (ptrdiff_t)sizeof(V);
+
+				return t;
+			}
+		#else
+			V t = *((V*)_opptr);
+			_opptr += (ptrdiff_t)sizeof(V);
+
+			return t;
+		#endif
 		}
 
 		template <VALUE V>
@@ -427,19 +994,19 @@ namespace interpreter
 		template <VALUE V>
 		inline void __jmp_msk()
 		{
-			type _type = fetch<type>();
+			type _type = (type)fetch<val8<>>().ui;
 			V _mask = fetch<V>();
 
 			ptrdiff_t os = (ptrdiff_t)fetch<V>().si;
 
-			if (match(_mask, _type))
+			if (match<V>::check(_state, _mask, _type))
 				_opptr += os;
 		}
 
 		template <VALUE V>
 		inline void __l_load()
 		{
-			ptrdiff_t os = (ptrdiff_t)fetch<int16_t>();
+			ptrdiff_t os = (ptrdiff_t)fetch<val16<>>().si;
 
 			_stack.load<V>(os);
 		}
@@ -447,7 +1014,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __l_store()
 		{
-			ptrdiff_t os = (ptrdiff_t)fetch<int16_t>();
+			ptrdiff_t os = (ptrdiff_t)fetch<val16<>>().si;
 
 			_stack.store<V>(os);
 		}
@@ -545,7 +1112,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __s_load()
 		{
-			ptrdiff_t os = (ptrdiff_t)fetch<int8_t>();
+			ptrdiff_t os = (ptrdiff_t)fetch<val8<>>().si;
 
 			_stack.load<V>(os);
 		}
@@ -553,7 +1120,7 @@ namespace interpreter
 		template <VALUE V>
 		inline void __s_store()
 		{
-			ptrdiff_t os = (ptrdiff_t)fetch<int8_t>();
+			ptrdiff_t os = (ptrdiff_t)fetch<val8<>>().si;
 
 			_stack.store<V>(os);
 		}
@@ -838,12 +1405,14 @@ namespace interpreter
 
 	public:
 		static void rev_endian(uint8_t* code, uint64_t size);
+		static void rev_endian(uint8_t* bcode, const uint8_t* ecode);
 
 		dispatcher() = delete;
 	#ifdef FETCHCHECK
-		dispatcher(const uint8_t* bcode, const uint8_t* ecode, uint64_t size);
+		dispatcher(const uint8_t* code, uint64_t code_size, uint64_t cache_size, uint64_t stack_size);
+		dispatcher(const uint8_t* bcode, const uint8_t* ecode, uint64_t cache_size, uint64_t stack_size);
 	#else
-		dispatcher(const uint8_t* code, uint64_t size);
+		dispatcher(const uint8_t* code, uint64_t cache_size, uint64_t stack_size);
 	#endif
 		dispatcher(const dispatcher& o) = delete;
 		dispatcher(dispatcher&& o) noexcept;

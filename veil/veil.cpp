@@ -85,7 +85,7 @@ int main()
 	// loop start
 	insertArrayToVector(code, op_asm::__jmp<val8<>, endian::native>(val8<>((int8_t)((int8_t)loop_start - (int8_t)loop_end - 2i8))));
 
-	dispatcher dis(code.data(), code.data() + code.size(), (1ui64 << 20ui64));
+	dispatcher dis(code.data(), code.data() + code.size(), 16ui64, (1ui64 << 20ui64));
 
 	dis.push_val(val64<>(a));
 

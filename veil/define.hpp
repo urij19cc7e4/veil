@@ -12,4 +12,5 @@
 #define MTYPECHECK
 #define OPRNDCHECK
 
+#define MSVCBTSWAP
 #define MSVCROTATE

@@ -7,11 +7,11 @@
 #include "interpreter_type.hpp"
 #include "op.hpp"
 
-#define ENDIAN_TEMPLATE_NO_PARAMETERS(NAME) template <std::endian endianness> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op)> __##NAME() noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op)>{ (uint8_t)interpreter::op::NAME }; }
+#define ENDIAN_TEMPLATE_NO_PARAMETERS(NAME) template <std::endian endianness = std::endian::native> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op)> __##NAME() noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op)>{ (uint8_t)interpreter::op::NAME }; }
 #define ONE_VALUE_ENDIAN_TEMPLATE_NO_PARAMETERS(NAME, BITS) template <interpreter::VALUE V, std::endian endianness> inline std::enable_if_t<std::is_same_v<V, interpreter::val##BITS<endianness>>, std::array<uint8_t, (uint64_t)sizeof(interpreter::op)>> __##NAME() noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op)>{ (uint8_t)interpreter::op::NAME##_##BITS }; }
 
-#define ENDIAN_TEMPLATE_L_PARAMETER(NAME) template <std::endian endianness> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)> __##NAME(interpreter::val16<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)>{ (uint8_t)interpreter::op::NAME, value.half.lo.ui, value.half.hi.ui }; }
-#define ENDIAN_TEMPLATE_S_PARAMETER(NAME) template <std::endian endianness> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)> __##NAME(interpreter::val8<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)>{ (uint8_t)interpreter::op::NAME, value.ui }; }
+#define ENDIAN_TEMPLATE_L_PARAMETER(NAME) template <std::endian endianness = std::endian::native> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)> __##NAME(interpreter::val16<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)>{ (uint8_t)interpreter::op::NAME, value.half.lo.ui, value.half.hi.ui }; }
+#define ENDIAN_TEMPLATE_S_PARAMETER(NAME) template <std::endian endianness = std::endian::native> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)> __##NAME(interpreter::val8<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)>{ (uint8_t)interpreter::op::NAME, value.ui }; }
 
 #define ONE_VALUE_ENDIAN_TEMPLATE_L_PARAMETER(NAME, BITS) template <interpreter::VALUE V, std::endian endianness> inline std::enable_if_t<std::is_same_v<V, interpreter::val##BITS<endianness>>, std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)>> __##NAME(interpreter::val16<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val16<endianness>)>{ (uint8_t)interpreter::op::NAME##_##BITS, value.half.lo.ui, value.half.hi.ui }; }
 #define ONE_VALUE_ENDIAN_TEMPLATE_S_PARAMETER(NAME, BITS) template <interpreter::VALUE V, std::endian endianness> inline std::enable_if_t<std::is_same_v<V, interpreter::val##BITS<endianness>>, std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)>> __##NAME(interpreter::val8<endianness> value) noexcept { return std::array<uint8_t, (uint64_t)sizeof(interpreter::op) + (uint64_t)sizeof(interpreter::val8<endianness>)>{ (uint8_t)interpreter::op::NAME##_##BITS, value.ui }; }
@@ -100,7 +100,7 @@ namespace op_asm
 	ONE_VALUE_ENDIAN_TEMPLATE_L_PARAMETER_64_32_16_8(l_store)
 	ENDIAN_TEMPLATE_NO_PARAMETERS(memcpy)
 	ENDIAN_TEMPLATE_NO_PARAMETERS(memset)
-	//template <std::endian endianness> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op)> __nativecall() {}
+	//template <std::endian endianness = std::endian::native> inline std::array<uint8_t, (uint64_t)sizeof(interpreter::op)> __nativecall() {}
 	ONE_VALUE_ENDIAN_TEMPLATE_NO_PARAMETERS_64_32_16_8(neg)
 	ENDIAN_TEMPLATE_NO_PARAMETERS(nop)
 	ONE_VALUE_ENDIAN_TEMPLATE_NO_PARAMETERS_64_32_16_8(not)
