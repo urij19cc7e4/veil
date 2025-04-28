@@ -39,8 +39,18 @@ stack_base::stack_base(uint64_t size)
 		throw runtime_error(_err_msg_zero_size);
 	else
 	{
-		_data = (uint8_t*)new uint8_t[size];
-		_size = size;
+		try
+		{
+			_data = (uint8_t*)new uint8_t[size];
+			_size = size;
+		}
+		catch (const runtime_error& e)
+		{
+			__del_obj();
+			__def_obj();
+
+			throw e;
+		}
 	}
 }
 

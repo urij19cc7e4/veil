@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <stdexcept>
+#include <utility>
 
 #include "interpreter_type.hpp"
 #include "stack_be.hpp"
@@ -14,143 +15,6 @@
 
 namespace interpreter
 {
-	enum class abi_type : uint8_t
-	{
-		NONE,
-		AIX,
-		ARC64,
-		ARCOMPACT,
-		COMPAT_GCC_SYSV,
-		COMPAT_LINUX,
-		COMPAT_LINUX64,
-		COMPAT_LINUX_SOFT_FLOAT,
-		COMPAT_SYSV,
-		DARWIN,
-		EABI,
-		EFI64,
-		ELFBSD,
-		FASTCALL,
-		GNUW64,
-		LINUX,
-		LP64D,
-		LP64F,
-		LP64S,
-		MS_CDECL,
-		N32,
-		N32_SOFT_FLOAT,
-		N64,
-		N64_SOFT_FLOAT,
-		O32,
-		O32_SOFT_FLOAT,
-		OBSD,
-		OSF,
-		PA32,
-		PA64,
-		PASCAL,
-		REGISTER,
-		STDCALL,
-		SYSV,
-		THISCALL,
-		UNIX,
-		UNIX64,
-		V8,
-		V9,
-		VFP,
-		WASM32,
-		WASM32_EMSCRIPTEN,
-		WIN64
-	};
-
-	enum class arg_i_type : uint8_t
-	{
-		__void,
-		__val64f,
-		__val64s,
-		__val64u,
-		__val32f,
-		__val32s,
-		__val32u,
-		__val16s,
-		__val16u,
-		__val8s,
-		__val8u,
-		__ptr
-	};
-
-	enum class arg_o_type : uint8_t
-	{
-		__void,
-		__flt64,
-		__sint64,
-		__uint64,
-		__flt32,
-		__sint32,
-		__uint32,
-		__sint16,
-		__uint16,
-		__sint8,
-		__uint8,
-		__ptr,
-	};
-
-	struct arg_type
-	{
-	public:
-		arg_i_type inner : 4ui64;
-		arg_o_type outer : 4ui64;
-
-		inline arg_type(arg_i_type inner = arg_i_type::__void, arg_o_type outer = arg_o_type::__void) noexcept
-			: inner(inner), outer(outer) {}
-		inline arg_type(const arg_type& o) noexcept : inner(o.inner), outer(o.outer) {}
-		inline arg_type(arg_type&& o) noexcept : inner(o.inner), outer(o.outer) {}
-		inline ~arg_type() noexcept = default;
-
-		inline arg_type& operator=(const arg_type& o) noexcept
-		{
-			inner = o.inner;
-			outer = o.outer;
-
-			return *this;
-		}
-
-		inline arg_type& operator=(arg_type&& o) noexcept
-		{
-			inner = (arg_i_type&&)o.inner;
-			outer = (arg_o_type&&)o.outer;
-
-			return *this;
-		}
-	};
-
-	template <std::endian endianness = std::endian::native>
-	union arg_type_val
-	{
-	public:
-		arg_type __arg_type;
-		val8<endianness> __value;
-
-		inline arg_type_val() noexcept : __value() {}
-		inline arg_type_val(const arg_type& a) noexcept : __arg_type(a) {}
-		inline arg_type_val(const val8<endianness>& v) noexcept : __value(v) {}
-		inline arg_type_val(const arg_type_val& o) noexcept : __value(o.__value) {}
-		inline arg_type_val(arg_type_val&& o) noexcept : __value(std::move(o.__value)) {}
-		inline ~arg_type_val() noexcept = default;
-
-		inline arg_type_val& operator=(const arg_type_val& o) noexcept
-		{
-			__value = o.__value;
-
-			return *this;
-		}
-
-		inline arg_type_val& operator=(arg_type_val&& o) noexcept
-		{
-			__value = std::move(o.__value);
-
-			return *this;
-		}
-	};
-
 	template <typename T, std::endian endianness = std::endian::native>
 	concept STACK = std::same_as<T, stack<endianness>&> || std::same_as<T, uintptr_t&>;
 
@@ -171,7 +35,7 @@ namespace interpreter
 		ffi_type* _ret_type;
 
 		void** _arg_val;
-		ffi_arg _ret_val;
+		void* _ret_val;
 
 		ffi_cif _cif;
 
@@ -222,8 +86,9 @@ namespace interpreter
 		}
 
 		static inline ffi_abi get_abi(abi_type type);
+		static inline uint64_t get_asize(arg_type type);
+		static inline uint64_t get_rsize(arg_type type);
 		static inline ffi_type* get_type(arg_type type);
-		static inline uint64_t get_size(arg_type type);
 		static inline void* get_val(arg_type type);
 
 		template <typename T>
@@ -253,16 +118,16 @@ namespace interpreter
 			switch (type)
 			{
 			case arg_o_type::__void: return (T)0ui8;
-			case arg_o_type::__flt64: return (T)*((double*)mem);
-			case arg_o_type::__sint64: return (T)*((int64_t*)mem);
-			case arg_o_type::__uint64: return (T)*((uint64_t*)mem);
-			case arg_o_type::__flt32: return (T)*((float*)mem);
-			case arg_o_type::__sint32: return (T)*((int32_t*)mem);
-			case arg_o_type::__uint32: return (T)*((uint32_t*)mem);
-			case arg_o_type::__sint16: return (T)*((int16_t*)mem);
-			case arg_o_type::__uint16: return (T)*((uint16_t*)mem);
-			case arg_o_type::__sint8: return (T)*((int8_t*)mem);
-			case arg_o_type::__uint8: return (T)*((uint8_t*)mem);
+			case arg_o_type::__flt64: return (T) * ((double*)mem);
+			case arg_o_type::__sint64: return (T) * ((int64_t*)mem);
+			case arg_o_type::__uint64: return (T) * ((uint64_t*)mem);
+			case arg_o_type::__flt32: return (T) * ((float*)mem);
+			case arg_o_type::__sint32: return (T) * ((int32_t*)mem);
+			case arg_o_type::__uint32: return (T) * ((uint32_t*)mem);
+			case arg_o_type::__sint16: return (T) * ((int16_t*)mem);
+			case arg_o_type::__uint16: return (T) * ((uint16_t*)mem);
+			case arg_o_type::__sint8: return (T) * ((int8_t*)mem);
+			case arg_o_type::__uint8: return (T) * ((uint8_t*)mem);
 			case arg_o_type::__ptr: // fall to default: throw
 			default: throw std::runtime_error(_err_msg_wrong_type);
 			}
@@ -281,7 +146,7 @@ namespace interpreter
 		nativecall(const uint8_t*& opptr, const uint8_t* bcode, const uint8_t* ecode);
 		nativecall(const nativecall& o);
 		nativecall(nativecall&& o) noexcept;
-		~nativecall();
+		~nativecall() noexcept;
 
 		template <std::endian endianness = std::endian::native>
 		void call(uintptr_t& stop, uintptr_t native_ptr)
@@ -312,25 +177,25 @@ namespace interpreter
 				default: throw std::runtime_error(_err_msg_wrong_type);
 				}
 
-			ffi_call(&_cif, (void (*)())native_ptr, &_ret_val, _arg_val);
+			ffi_call(&_cif, (void (*)())native_ptr, _ret_val, _arg_val);
 
 			switch (_ret_io_type.inner)
 			{
 			case arg_i_type::__void: break;
-			case arg_i_type::__val64f: stack_type::template dil_push(stop, val64<>(convert<double>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val64s: stack_type::template dil_push(stop, val64<>(convert<int64_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val64u: stack_type::template dil_push(stop, val64<>(convert<uint64_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32f: stack_type::template dil_push(stop, val32<>(convert<float>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32s: stack_type::template dil_push(stop, val32<>(convert<int32_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32u: stack_type::template dil_push(stop, val32<>(convert<uint32_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val16s: stack_type::template dil_push(stop, val16<>(convert<int16_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val16u: stack_type::template dil_push(stop, val16<>(convert<uint16_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val8s: stack_type::template dil_push(stop, val8<>(convert<int8_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val8u: stack_type::template dil_push(stop, val8<>(convert<uint8_t>(&_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64f: stack_type::template dil_push(stop, val64<>(convert<double>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64s: stack_type::template dil_push(stop, val64<>(convert<int64_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64u: stack_type::template dil_push(stop, val64<>(convert<uint64_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32f: stack_type::template dil_push(stop, val32<>(convert<float>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32s: stack_type::template dil_push(stop, val32<>(convert<int32_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32u: stack_type::template dil_push(stop, val32<>(convert<uint32_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val16s: stack_type::template dil_push(stop, val16<>(convert<int16_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val16u: stack_type::template dil_push(stop, val16<>(convert<uint16_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val8s: stack_type::template dil_push(stop, val8<>(convert<int8_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val8u: stack_type::template dil_push(stop, val8<>(convert<uint8_t>(_ret_val, _ret_io_type.outer))); break;
 			case arg_i_type::__ptr:
 				if (_ret_io_type.outer == arg_o_type::__ptr)
 				{
-					stack_type::template dil_push_ptr(stop, (uintptr_t)((void*)&_ret_val));
+					stack_type::template dil_push_ptr(stop, (uintptr_t) * ((void**)_ret_val));
 					break;
 				}
 				// else fall to default: throw
@@ -365,25 +230,25 @@ namespace interpreter
 				default: throw std::runtime_error(_err_msg_wrong_type);
 				}
 
-			ffi_call(&_cif, (void (*)())native_ptr, &_ret_val, _arg_val);
+			ffi_call(&_cif, (void (*)())native_ptr, _ret_val, _arg_val);
 
 			switch (_ret_io_type.inner)
 			{
 			case arg_i_type::__void: break;
-			case arg_i_type::__val64f: stack.push(val64<>(convert<double>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val64s: stack.push(val64<>(convert<int64_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val64u: stack.push(val64<>(convert<uint64_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32f: stack.push(val32<>(convert<float>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32s: stack.push(val32<>(convert<int32_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val32u: stack.push(val32<>(convert<uint32_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val16s: stack.push(val16<>(convert<int16_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val16u: stack.push(val16<>(convert<uint16_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val8s: stack.push(val8<>(convert<int8_t>(&_ret_val, _ret_io_type.outer))); break;
-			case arg_i_type::__val8u: stack.push(val8<>(convert<uint8_t>(&_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64f: stack.push(val64<>(convert<double>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64s: stack.push(val64<>(convert<int64_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val64u: stack.push(val64<>(convert<uint64_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32f: stack.push(val32<>(convert<float>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32s: stack.push(val32<>(convert<int32_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val32u: stack.push(val32<>(convert<uint32_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val16s: stack.push(val16<>(convert<int16_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val16u: stack.push(val16<>(convert<uint16_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val8s: stack.push(val8<>(convert<int8_t>(_ret_val, _ret_io_type.outer))); break;
+			case arg_i_type::__val8u: stack.push(val8<>(convert<uint8_t>(_ret_val, _ret_io_type.outer))); break;
 			case arg_i_type::__ptr:
 				if (_ret_io_type.outer == arg_o_type::__ptr)
 				{
-					stack.push_ptr((uintptr_t)((void*)&_ret_val));
+					stack.push_ptr((uintptr_t) * ((void**)_ret_val));
 					break;
 				}
 				// else fall to default: throw

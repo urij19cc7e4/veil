@@ -1,7 +1,5 @@
 #include "dispatcher.hpp"
 
-#include <cmath>
-
 using namespace interpreter;
 using namespace std;
 
@@ -105,9 +103,9 @@ namespace interpreter
 	};
 }
 
-void dispatcher::rev_endian(uint8_t* code, uint64_t size)
+void dispatcher::rev_endian(uint8_t* code, uint64_t code_size)
 {
-	rev_endian(code, (const uint8_t*)(code + (ptrdiff_t)size));
+	rev_endian(code, (const uint8_t*)(code + (ptrdiff_t)code_size));
 }
 
 void dispatcher::rev_endian(uint8_t* bcode, const uint8_t* ecode)
@@ -287,7 +285,7 @@ dispatcher::dispatcher(const uint8_t* bcode, const uint8_t* ecode, uint64_t cach
 	: _code_beg(bcode), _code_end(ecode), _nativehub(cache_size), _stack(stack_size), _opptr(bcode), _state() {}
 
 dispatcher::dispatcher(dispatcher&& o) noexcept : _code_beg(move(o._code_beg)), _code_end(move(o._code_end)),
-	_nativehub(move(o._nativehub)), _stack(move(o._stack)), _opptr(move(o._opptr)), _state(move(o._state))
+_nativehub(move(o._nativehub)), _stack(move(o._stack)), _opptr(move(o._opptr)), _state(move(o._state))
 {
 	o._code_beg = (const uint8_t*)nullptr;
 	o._code_end = (const uint8_t*)nullptr;
@@ -333,9 +331,9 @@ void dispatcher::loop()
 	while (true)
 	{
 	#ifdef DEEPINLINE
-		op op_code = (op)dil_fetch<val8<>>(opptr).ui;
+		const op op_code = (op)dil_fetch<val8<>>(opptr).ui;
 	#else
-		op op_code = (op)fetch<val8<>>().ui;
+		const op op_code = (op)fetch<val8<>>().ui;
 	#endif
 
 		switch (op_code)
@@ -349,7 +347,13 @@ void dispatcher::loop()
 		case op::nativecall:
 		{
 		#ifdef DEEPINLINE
-			_nativehub.call(opptr, stop);
+			uintptr_t stop_temp = stop;
+			const uint8_t* opptr_temp = opptr;
+
+			_nativehub.call(opptr_temp, stop_temp);
+
+			stop = stop_temp;
+			opptr = opptr_temp;
 		#else
 		#ifdef FETCHCHECK
 			_nativehub.call(_opptr, _stack, _code_beg, _code_end);
@@ -415,7 +419,7 @@ void dispatcher::loop()
 		#ifdef DEEPINLINE
 			uint8_t* dst = (uint8_t*)stack_type::dil_pop_ptr(stop);
 			uint8_t* src = (uint8_t*)stack_type::dil_pop_ptr(stop);
-			uint64_t c = stack_type::dil_pop<val64<>>(stop).ui;
+			const uint64_t c = stack_type::dil_pop<val64<>>(stop).ui;
 
 			memcpy(dst, src, c);
 		#else
@@ -432,8 +436,8 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			uint8_t* dst = (uint8_t*)stack_type::dil_pop_ptr(stop);
-			uint8_t val = stack_type::dil_pop<val8<>>(stop).ui;
-			uint64_t c = stack_type::dil_pop<val64<>>(stop).ui;
+			const uint8_t val = stack_type::dil_pop<val8<>>(stop).ui;
+			const uint64_t c = stack_type::dil_pop<val64<>>(stop).ui;
 
 			memset(dst, val, c);
 		#else
@@ -2590,15 +2594,13 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			int64_t si = v.si;
-
-			v.f = (double)si;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			int64_t si = v.si;
-
-			v.f = (double)si;
 		#endif
+
+			const int64_t si = v.si;
+			v.f = (double)si;
+
 			break;
 		}
 
@@ -2606,19 +2608,20 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			int64_t si = v.si;
-
-			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
-
-			v.half.hi.f = (float)si;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			int64_t si = v.si;
+		#endif
 
+			const int64_t si = v.si;
+
+		#ifdef DEEPINLINE
+			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
+		#else
 			_stack.dealloc((uint64_t)sizeof(val32<>));
+		#endif
 
 			v.half.hi.f = (float)si;
-		#endif
+
 			break;
 		}
 
@@ -2626,19 +2629,15 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			stack_type::dil_alloc(stop, (uint64_t)sizeof(val32<>));
-
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			int32_t si = v.half.hi.si;
-
-			v.f = (double)si;
 		#else
 			_stack.alloc((uint64_t)sizeof(val32<>));
-
 			val64<>& v = _stack.top<val64<>>();
-			int32_t si = v.half.hi.si;
-
-			v.f = (double)si;
 		#endif
+
+			const int32_t si = v.half.hi.si;
+			v.f = (double)si;
+
 			break;
 		}
 
@@ -2646,15 +2645,13 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val32<>& v = stack_type::dil_top<val32<>>(stop);
-			int32_t si = v.si;
-
-			v.f = (float)si;
 		#else
 			val32<>& v = _stack.top<val32<>>();
-			int32_t si = v.si;
-
-			v.f = (float)si;
 		#endif
+
+			const int32_t si = v.si;
+			v.f = (float)si;
+
 			break;
 		}
 
@@ -2662,15 +2659,13 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			uint64_t ui = v.ui;
-
-			v.f = (double)ui;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			uint64_t ui = v.ui;
-
-			v.f = (double)ui;
 		#endif
+
+			const uint64_t ui = v.ui;
+			v.f = (double)ui;
+
 			break;
 		}
 
@@ -2678,19 +2673,20 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			uint64_t ui = v.ui;
-
-			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
-
-			v.half.hi.f = (float)ui;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			uint64_t ui = v.ui;
+		#endif
 
+			const uint64_t ui = v.ui;
+
+		#ifdef DEEPINLINE
+			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
+		#else
 			_stack.dealloc((uint64_t)sizeof(val32<>));
+		#endif
 
 			v.half.hi.f = (float)ui;
-		#endif
+
 			break;
 		}
 
@@ -2698,19 +2694,15 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			stack_type::dil_alloc(stop, (uint64_t)sizeof(val32<>));
-
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			uint32_t ui = v.half.hi.ui;
-
-			v.f = (double)ui;
 		#else
 			_stack.alloc((uint64_t)sizeof(val32<>));
-
 			val64<>& v = _stack.top<val64<>>();
-			uint32_t ui = v.half.hi.ui;
-
-			v.f = (double)ui;
 		#endif
+
+			const uint32_t ui = v.half.hi.ui;
+			v.f = (double)ui;
+
 			break;
 		}
 
@@ -2718,15 +2710,13 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val32<>& v = stack_type::dil_top<val32<>>(stop);
-			uint32_t ui = v.ui;
-
-			v.f = (float)ui;
 		#else
 			val32<>& v = _stack.top<val32<>>();
-			uint32_t ui = v.ui;
-
-			v.f = (float)ui;
 		#endif
+
+			const uint32_t ui = v.ui;
+			v.f = (float)ui;
+
 			break;
 		}
 
@@ -2734,31 +2724,24 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			double f = v.f;
-
-			bool ovf = !(f < (double)__2_POW_63);
-			bool unf = !(f >= -(double)__2_POW_63);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.si = (int64_t)f;
+			interpreter::state& s = state;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			double f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (double)__2_POW_63);
-			bool unf = !(f >= -(double)__2_POW_63);
+			const double f = v.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (double)__2_POW_63);
+			const bool unf = !(f >= -(double)__2_POW_63);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.si = (int64_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2766,35 +2749,30 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			double f = v.f;
-
-			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
-
-			bool ovf = !(f < (double)__2_POW_31);
-			bool unf = !(f >= -(double)__2_POW_31);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.half.hi.si = (int32_t)f;
+			interpreter::state& s = state;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			double f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
+			const double f = v.f;
+
+		#ifdef DEEPINLINE
+			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
+		#else
 			_stack.dealloc((uint64_t)sizeof(val32<>));
+		#endif
 
-			bool ovf = !(f < (double)__2_POW_31);
-			bool unf = !(f >= -(double)__2_POW_31);
+			const bool ovf = !(f < (double)__2_POW_31);
+			const bool unf = !(f >= -(double)__2_POW_31);
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.half.hi.si = (int32_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2802,35 +2780,26 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			stack_type::dil_alloc(stop, (uint64_t)sizeof(val32<>));
-
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			float f = v.half.hi.f;
-
-			bool ovf = !(f < (float)__2_POW_63);
-			bool unf = !(f >= -(float)__2_POW_63);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.si = (int64_t)f;
+			interpreter::state& s = state;
 		#else
 			_stack.alloc((uint64_t)sizeof(val32<>));
-
 			val64<>& v = _stack.top<val64<>>();
-			float f = v.half.hi.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (float)__2_POW_63);
-			bool unf = !(f >= -(float)__2_POW_63);
+			const float f = v.half.hi.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (float)__2_POW_63);
+			const bool unf = !(f >= -(float)__2_POW_63);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.si = (int64_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2838,31 +2807,24 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val32<>& v = stack_type::dil_top<val32<>>(stop);
-			float f = v.f;
-
-			bool ovf = !(f < (float)__2_POW_31);
-			bool unf = !(f >= -(float)__2_POW_31);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.si = (int32_t)f;
+			interpreter::state& s = state;
 		#else
 			val32<>& v = _stack.top<val32<>>();
-			float f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (float)__2_POW_31);
-			bool unf = !(f >= -(float)__2_POW_31);
+			const float f = v.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (float)__2_POW_31);
+			const bool unf = !(f >= -(float)__2_POW_31);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.si = (int32_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2870,31 +2832,24 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			double f = v.f;
-
-			bool ovf = !(f < (double)__2_POW_64);
-			bool unf = !(f >= (double)__0);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.ui = (uint64_t)f;
+			interpreter::state& s = state;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			double f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (double)__2_POW_64);
-			bool unf = !(f >= (double)__0);
+			const double f = v.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (double)__2_POW_64);
+			const bool unf = !(f >= (double)__0);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.ui = (uint64_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2902,35 +2857,30 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			double f = v.f;
-
-			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
-
-			bool ovf = !(f < (double)__2_POW_32);
-			bool unf = !(f >= (double)__0);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.half.hi.ui = (uint32_t)f;
+			interpreter::state& s = state;
 		#else
 			val64<>& v = _stack.top<val64<>>();
-			double f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
+			const double f = v.f;
+
+		#ifdef DEEPINLINE
+			stack_type::dil_dealloc(stop, (uint64_t)sizeof(val32<>));
+		#else
 			_stack.dealloc((uint64_t)sizeof(val32<>));
+		#endif
 
-			bool ovf = !(f < (double)__2_POW_32);
-			bool unf = !(f >= (double)__0);
+			const bool ovf = !(f < (double)__2_POW_32);
+			const bool unf = !(f >= (double)__0);
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.half.hi.ui = (uint32_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2938,35 +2888,26 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			stack_type::dil_alloc(stop, (uint64_t)sizeof(val32<>));
-
 			val64<>& v = stack_type::dil_top<val64<>>(stop);
-			float f = v.half.hi.f;
-
-			bool ovf = !(f < (float)__2_POW_64);
-			bool unf = !(f >= (float)__0);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.ui = (uint64_t)f;
+			interpreter::state& s = state;
 		#else
 			_stack.alloc((uint64_t)sizeof(val32<>));
-
 			val64<>& v = _stack.top<val64<>>();
-			float f = v.half.hi.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (float)__2_POW_64);
-			bool unf = !(f >= (float)__0);
+			const float f = v.half.hi.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (float)__2_POW_64);
+			const bool unf = !(f >= (float)__0);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.ui = (uint64_t)f;
-		#endif
+
 			break;
 		}
 
@@ -2974,31 +2915,24 @@ void dispatcher::loop()
 		{
 		#ifdef DEEPINLINE
 			val32<>& v = stack_type::dil_top<val32<>>(stop);
-			float f = v.f;
-
-			bool ovf = !(f < (float)__2_POW_32);
-			bool unf = !(f >= (float)__0);
-
-			state.eval.bits.ierr = ovf && unf;
-			state.eval.bits.iovf = ovf && !unf;
-			state.eval.bits.iunf = !ovf && unf;
-
-			if (!ovf && !unf)
-				v.ui = (uint32_t)f;
+			interpreter::state& s = state;
 		#else
 			val32<>& v = _stack.top<val32<>>();
-			float f = v.f;
+			interpreter::state& s = _state;
+		#endif
 
-			bool ovf = !(f < (float)__2_POW_32);
-			bool unf = !(f >= (float)__0);
+			const float f = v.f;
 
-			_state.eval.bits.ierr = ovf && unf;
-			_state.eval.bits.iovf = ovf && !unf;
-			_state.eval.bits.iunf = !ovf && unf;
+			const bool ovf = !(f < (float)__2_POW_32);
+			const bool unf = !(f >= (float)__0);
+
+			s.eval.bits.ierr = ovf && unf;
+			s.eval.bits.iovf = ovf && !unf;
+			s.eval.bits.iunf = !ovf && unf;
 
 			if (!ovf && !unf)
 				v.ui = (uint32_t)f;
-		#endif
+
 			break;
 		}
 

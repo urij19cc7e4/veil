@@ -192,12 +192,30 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_32.obj;$(SolutionDir)lib\ARM_32\libffi.dll.a;$(SolutionDir)lib\ARM_32\libffi.a;$(SolutionDir)lib\ARM_32\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_32\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -212,12 +230,30 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_64.obj;$(SolutionDir)lib\ARM_64\libffi.dll.a;$(SolutionDir)lib\ARM_64\libffi.a;$(SolutionDir)lib\ARM_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64EC'">
     <ClCompile>
@@ -232,12 +268,30 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_64.obj;$(SolutionDir)lib\ARM_64\libffi.dll.a;$(SolutionDir)lib\ARM_64\libffi.a;$(SolutionDir)lib\ARM_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -252,15 +306,33 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\x86_32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)x86_32.obj;$(SolutionDir)lib\x86_32\libffi.dll.a;$(SolutionDir)lib\x86_32\libffi.a;$(SolutionDir)lib\x86_32\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
       <Command>ml /c /Fo "$(IntDir)x86_32.obj" x86_32.asm</Command>
     </PreLinkEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\x86_32\*.dll" "$(SolutionDir)$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -275,15 +347,33 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\x86_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)x86_64.obj;$(SolutionDir)lib\x86_64\libffi.dll.a;$(SolutionDir)lib\x86_64\libffi.a;$(SolutionDir)lib\x86_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
       <Command>ml64 /c /Fo "$(IntDir)x86_64.obj" x86_64.asm</Command>
     </PreLinkEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\x86_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
@@ -303,6 +393,13 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -310,7 +407,18 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_32.obj;$(SolutionDir)lib\ARM_32\libffi.dll.a;$(SolutionDir)lib\ARM_32\libffi.a;$(SolutionDir)lib\ARM_32\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_32\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
@@ -330,6 +438,13 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -337,7 +452,18 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_64.obj;$(SolutionDir)lib\ARM_64\libffi.dll.a;$(SolutionDir)lib\ARM_64\libffi.a;$(SolutionDir)lib\ARM_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">
     <ClCompile>
@@ -357,6 +483,13 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\ARM_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -364,7 +497,18 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)ARM_64.obj;$(SolutionDir)lib\ARM_64\libffi.dll.a;$(SolutionDir)lib\ARM_64\libffi.a;$(SolutionDir)lib\ARM_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\ARM_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -384,6 +528,13 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\x86_32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -391,10 +542,21 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)x86_32.obj;$(SolutionDir)lib\x86_32\libffi.dll.a;$(SolutionDir)lib\x86_32\libffi.a;$(SolutionDir)lib\x86_32\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
       <Command>ml /c /Fo "$(IntDir)x86_32.obj" x86_32.asm</Command>
     </PreLinkEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\x86_32\*.dll" "$(SolutionDir)$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -414,6 +576,13 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(SolutionDir)include\x86_64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <BrowseInformation>true</BrowseInformation>
+      <CallingConvention>FastCall</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -421,10 +590,21 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(IntDir)x86_64.obj;$(SolutionDir)lib\x86_64\libffi.dll.a;$(SolutionDir)lib\x86_64\libffi.a;$(SolutionDir)lib\x86_64\libffi_convenience.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>65536</HeapReserveSize>
+      <HeapCommitSize>65536</HeapCommitSize>
+      <StackReserveSize>65536</StackReserveSize>
+      <StackCommitSize>65536</StackCommitSize>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
       <Command>ml64 /c /Fo "$(IntDir)x86_64.obj" x86_64.asm</Command>
     </PreLinkEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)lib\x86_64\*.dll" "$(SolutionDir)$(Platform)\$(Configuration)\" /H /K /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="api.cpp" />

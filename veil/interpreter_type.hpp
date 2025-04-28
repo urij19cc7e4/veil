@@ -3,9 +3,134 @@
 #include <bit>
 #include <concepts>
 #include <cstdint>
+#include <utility>
 
 namespace interpreter
 {
+	enum class abi_type : uint8_t
+	{
+		NONE,
+		AIX,
+		ARC64,
+		ARCOMPACT,
+		COMPAT_GCC_SYSV,
+		COMPAT_LINUX,
+		COMPAT_LINUX64,
+		COMPAT_LINUX_SOFT_FLOAT,
+		COMPAT_SYSV,
+		DARWIN,
+		EABI,
+		EFI64,
+		ELFBSD,
+		FASTCALL,
+		GNUW64,
+		LINUX,
+		LP64D,
+		LP64F,
+		LP64S,
+		MS_CDECL,
+		N32,
+		N32_SOFT_FLOAT,
+		N64,
+		N64_SOFT_FLOAT,
+		O32,
+		O32_SOFT_FLOAT,
+		OBSD,
+		OSF,
+		PA32,
+		PA64,
+		PASCAL,
+		REGISTER,
+		STDCALL,
+		SYSV,
+		THISCALL,
+		UNIX,
+		UNIX64,
+		V8,
+		V9,
+		VFP,
+		WASM32,
+		WASM32_EMSCRIPTEN,
+		WIN64
+	};
+
+	enum class arg_i_type : uint8_t
+	{
+		__void,
+		__val64f,
+		__val64s,
+		__val64u,
+		__val32f,
+		__val32s,
+		__val32u,
+		__val16s,
+		__val16u,
+		__val8s,
+		__val8u,
+		__ptr
+	};
+
+	enum class arg_o_type : uint8_t
+	{
+		__void,
+		__flt64,
+		__sint64,
+		__uint64,
+		__flt32,
+		__sint32,
+		__uint32,
+		__sint16,
+		__uint16,
+		__sint8,
+		__uint8,
+		__ptr,
+	};
+
+	enum class type : uint8_t
+	{
+		v0 = 0ui8,
+		v1 = 1ui8
+	};
+
+	enum class vtype : uint8_t
+	{
+		__void,
+		__val64,
+		__val32,
+		__val16,
+		__val8,
+		__ptr,
+	};
+
+	struct arg_type
+	{
+	public:
+		arg_i_type inner : 4ui64;
+		arg_o_type outer : 4ui64;
+
+		inline arg_type(arg_i_type inner = arg_i_type::__void, arg_o_type outer = arg_o_type::__void) noexcept
+			: inner(inner), outer(outer) {}
+		inline arg_type(const arg_type& o) noexcept : inner(o.inner), outer(o.outer) {}
+		inline arg_type(arg_type&& o) noexcept : inner(o.inner), outer(o.outer) {}
+		inline ~arg_type() noexcept = default;
+
+		inline arg_type& operator=(const arg_type& o) noexcept
+		{
+			inner = o.inner;
+			outer = o.outer;
+
+			return *this;
+		}
+
+		inline arg_type& operator=(arg_type&& o) noexcept
+		{
+			inner = (arg_i_type&&)o.inner;
+			outer = (arg_o_type&&)o.outer;
+
+			return *this;
+		}
+	};
+
 	struct comp_bits
 	{
 	public:
@@ -231,12 +356,6 @@ namespace interpreter
 		}
 	};
 
-	enum class type : uint8_t
-	{
-		v0 = 0ui8,
-		v1 = 1ui8
-	};
-
 	template <std::endian endianness = std::endian::native>
 	union val8
 	{
@@ -441,6 +560,35 @@ namespace interpreter
 	};
 
 	template <std::endian endianness = std::endian::native>
+	union arg_type_val
+	{
+	public:
+		arg_type __arg_type;
+		val8<endianness> __value;
+
+		inline arg_type_val() noexcept : __value() {}
+		inline arg_type_val(const arg_type& a) noexcept : __arg_type(a) {}
+		inline arg_type_val(const val8<endianness>& v) noexcept : __value(v) {}
+		inline arg_type_val(const arg_type_val& o) noexcept : __value(o.__value) {}
+		inline arg_type_val(arg_type_val&& o) noexcept : __value(std::move(o.__value)) {}
+		inline ~arg_type_val() noexcept = default;
+
+		inline arg_type_val& operator=(const arg_type_val& o) noexcept
+		{
+			__value = o.__value;
+
+			return *this;
+		}
+
+		inline arg_type_val& operator=(arg_type_val&& o) noexcept
+		{
+			__value = std::move(o.__value);
+
+			return *this;
+		}
+	};
+
+	template <std::endian endianness = std::endian::native>
 	union state_val
 	{
 	public:
@@ -468,6 +616,8 @@ namespace interpreter
 			return *this;
 		}
 	};
+
+	struct VOID {};
 
 	template <typename T>
 	concept FLOAT = std::same_as<T, double> || std::same_as<T, float>;
@@ -507,4 +657,7 @@ namespace interpreter
 
 	template <typename T>
 	concept VALUE_IPTR = VALUE<T> || IPTR<T>;
+
+	template <typename T>
+	concept VALUE_IPTR_VOID = VALUE_IPTR<T> || std::same_as<T, VOID>;
 }

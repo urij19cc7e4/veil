@@ -16,9 +16,22 @@ namespace interpreter
 
 		exit,				// [ op (8) ]
 
-		// nativecall - not implemented
+		// nativecall - transfers control flow to the native code function which absolute address
+		//              is stored in stack; stack arguments are popped in following order:
+		// 
+		//              1. Native code function absolute address (64 bits)
+		//              2. First inner-type function argument (A1 bits)
+		//              3. ...
+		//              N. Last inner-type function argument (AN bits)
+		// 
+		//              byte-code arguments order:
+		// 
+		//              1. ABI type is one of interpreter::abi_type value (platform-dependent, NONE for DEFAULT)
+		//              2. Argument count is 8-bit unsigned integer in range [0; 255]
+		//              3. <arg_count + 1> of interpreter::arg_io_type 8-bit values meaning argument types
+		//                 from left to right and return type (last)
 
-		nativecall,			// [ op (8) ]
+		nativecall,			// [ op (8) ][ abi_type (8) ][ arg_count (8) ]{[ arg_io_type (8) ]<arg_count + 1>}
 
 		// ret - transfers control flow to the instruction pointer stored over stack frame
 		// 
@@ -39,7 +52,7 @@ namespace interpreter
 		call_64,			// [ op (8) ][ offset (64) ]
 		call_32,			// [ op (8) ][ offset (32) ]
 		call_16,			// [ op (8) ][ offset (16) ]
-		call_8,				// [ op (8) ][ offset (8) ]
+		call_8,				// [ op (8) ][ offset  (8) ]
 
 		// memcpy - pops destination memory region pointer, source memory region pointer,
 		//          64-bit unsigned integer memory region size value
@@ -65,7 +78,7 @@ namespace interpreter
 		// s_alloc - allocates 8-bit unsigned integer byte count value on stack
 		//           affected flags: none
 
-		s_alloc,			// [ op (8) ][ offset (8) ]
+		s_alloc,			// [ op (8) ][ offset  (8) ]
 
 		// l_allocz - allocates 16-bit unsigned integer byte count value on stack and zeroes it
 		//            affected flags: none
@@ -75,7 +88,7 @@ namespace interpreter
 		// s_allocz - allocates 8-bit unsigned integer byte count value on stack and zeroes it
 		//            affected flags: none
 
-		s_allocz,			// [ op (8) ][ offset (8) ]
+		s_allocz,			// [ op (8) ][ offset  (8) ]
 
 		// l_dealloc - deallocates 16-bit unsigned integer byte count value on stack
 		//             affected flags: none
@@ -85,7 +98,7 @@ namespace interpreter
 		// s_dealloc - deallocates 8-bit unsigned integer byte count value on stack
 		//             affected flags: none
 
-		s_dealloc,			// [ op (8) ][ offset (8) ]
+		s_dealloc,			// [ op (8) ][ offset  (8) ]
 
 		// push_flow - pushes current control flow pointer to stack
 		//             affected flags: none
@@ -134,7 +147,7 @@ namespace interpreter
 		jmp_64,				// [ op (8) ][ offset (64) ]
 		jmp_32,				// [ op (8) ][ offset (32) ]
 		jmp_16,				// [ op (8) ][ offset (16) ]
-		jmp_8,				// [ op (8) ][ offset (8) ]
+		jmp_8,				// [ op (8) ][ offset  (8) ]
 
 		// jmp_a_b - transfers control flow to the instruction by b-bit signed integer
 		//           offset value from the instruction following the given instruction
@@ -144,7 +157,7 @@ namespace interpreter
 		jmp_a_64,			// [ op (8) ][ offset (64) ]
 		jmp_a_32,			// [ op (8) ][ offset (32) ]
 		jmp_a_16,			// [ op (8) ][ offset (16) ]
-		jmp_a_8,			// [ op (8) ][ offset (8) ]
+		jmp_a_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_ae_b - transfers control flow to the instruction by b-bit signed integer
 		//            offset value from the instruction following the given instruction
@@ -154,7 +167,7 @@ namespace interpreter
 		jmp_ae_64,			// [ op (8) ][ offset (64) ]
 		jmp_ae_32,			// [ op (8) ][ offset (32) ]
 		jmp_ae_16,			// [ op (8) ][ offset (16) ]
-		jmp_ae_8,			// [ op (8) ][ offset (8) ]
+		jmp_ae_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_b_b - transfers control flow to the instruction by b-bit signed integer
 		//           offset value from the instruction following the given instruction
@@ -164,7 +177,7 @@ namespace interpreter
 		jmp_b_64,			// [ op (8) ][ offset (64) ]
 		jmp_b_32,			// [ op (8) ][ offset (32) ]
 		jmp_b_16,			// [ op (8) ][ offset (16) ]
-		jmp_b_8,			// [ op (8) ][ offset (8) ]
+		jmp_b_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_be_b - transfers control flow to the instruction by b-bit signed integer
 		//            offset value from the instruction following the given instruction
@@ -174,7 +187,7 @@ namespace interpreter
 		jmp_be_64,			// [ op (8) ][ offset (64) ]
 		jmp_be_32,			// [ op (8) ][ offset (32) ]
 		jmp_be_16,			// [ op (8) ][ offset (16) ]
-		jmp_be_8,			// [ op (8) ][ offset (8) ]
+		jmp_be_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_e_b - transfers control flow to the instruction by b-bit signed integer
 		//           offset value from the instruction following the given instruction
@@ -184,7 +197,7 @@ namespace interpreter
 		jmp_e_64,			// [ op (8) ][ offset (64) ]
 		jmp_e_32,			// [ op (8) ][ offset (32) ]
 		jmp_e_16,			// [ op (8) ][ offset (16) ]
-		jmp_e_8,			// [ op (8) ][ offset (8) ]
+		jmp_e_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_ne_b - transfers control flow to the instruction by b-bit signed integer
 		//            offset value from the instruction following the given instruction
@@ -194,7 +207,7 @@ namespace interpreter
 		jmp_ne_64,			// [ op (8) ][ offset (64) ]
 		jmp_ne_32,			// [ op (8) ][ offset (32) ]
 		jmp_ne_16,			// [ op (8) ][ offset (16) ]
-		jmp_ne_8,			// [ op (8) ][ offset (8) ]
+		jmp_ne_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_un_b - transfers control flow to the instruction by b-bit signed integer
 		//            offset value from the instruction following the given instruction
@@ -204,7 +217,7 @@ namespace interpreter
 		jmp_un_64,			// [ op (8) ][ offset (64) ]
 		jmp_un_32,			// [ op (8) ][ offset (32) ]
 		jmp_un_16,			// [ op (8) ][ offset (16) ]
-		jmp_un_8,			// [ op (8) ][ offset (8) ]
+		jmp_un_8,			// [ op (8) ][ offset  (8) ]
 
 		// jmp_msk_b - transfers control flow to the instruction by b-bit signed integer
 		//             offset value from the instruction following the given instruction
@@ -214,7 +227,7 @@ namespace interpreter
 		jmp_msk_64,			// [ op (8) ][ type (8) ][ mask (64) ][ offset (64) ]
 		jmp_msk_32,			// [ op (8) ][ type (8) ][ mask (32) ][ offset (32) ]
 		jmp_msk_16,			// [ op (8) ][ type (8) ][ mask (16) ][ offset (16) ]
-		jmp_msk_8,			// [ op (8) ][ type (8) ][ mask (8) ][ offset (8) ]
+		jmp_msk_8,			// [ op (8) ][ type (8) ][ mask  (8) ][ offset  (8) ]
 
 		// l_load_b - pushes b-bit value
 		//            from 16-bit signed integer offset value on stack frame to stack
@@ -238,19 +251,19 @@ namespace interpreter
 		//            from 8-bit signed integer offset value on stack frame to stack
 		//            affected flags: none
 
-		s_load_64,			// [ op (8) ][ offset (8) ]
-		s_load_32,			// [ op (8) ][ offset (8) ]
-		s_load_16,			// [ op (8) ][ offset (8) ]
-		s_load_8,			// [ op (8) ][ offset (8) ]
+		s_load_64,			// [ op (8) ][ offset  (8) ]
+		s_load_32,			// [ op (8) ][ offset  (8) ]
+		s_load_16,			// [ op (8) ][ offset  (8) ]
+		s_load_8,			// [ op (8) ][ offset  (8) ]
 
 		// s_store_b - pops b-bit value
 		//             from stack to 8-bit signed integer offset value on stack frame
 		//             affected flags: none
 
-		s_store_64,			// [ op (8) ][ offset (8) ]
-		s_store_32,			// [ op (8) ][ offset (8) ]
-		s_store_16,			// [ op (8) ][ offset (8) ]
-		s_store_8,			// [ op (8) ][ offset (8) ]
+		s_store_64,			// [ op (8) ][ offset  (8) ]
+		s_store_32,			// [ op (8) ][ offset  (8) ]
+		s_store_16,			// [ op (8) ][ offset  (8) ]
+		s_store_8,			// [ op (8) ][ offset  (8) ]
 
 		// push_b - pushes b-bit value to stack
 		//          affected flags: none
@@ -258,7 +271,7 @@ namespace interpreter
 		push_64,			// [ op (8) ][ value (64) ]
 		push_32,			// [ op (8) ][ value (32) ]
 		push_16,			// [ op (8) ][ value (16) ]
-		push_8,				// [ op (8) ][ value (8) ]
+		push_8,				// [ op (8) ][ value  (8) ]
 
 		// pop_b - pops b-bit value from stack
 		//         affected flags: none

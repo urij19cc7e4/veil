@@ -423,7 +423,7 @@ namespace interpreter
 			else
 				*((V*)__get_vptr<V>(offset)) = __pop_val<V>();
 		#else
-			* ((V*)__get_vptr<V>(offset)) = __pop_val<V>();
+			*((V*)__get_vptr<V>(offset)) = __pop_val<V>();
 		#endif
 		}
 
